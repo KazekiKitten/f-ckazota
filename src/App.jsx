@@ -67,6 +67,18 @@ const translations = {
     answerReview: "Xem lại câu trả lời",
     correctAnswer: "Câu trả lời đúng:",
     
+    // Rapid test mode
+    rapidTest: "Kiểm tra nhanh",
+    rapidTestDesc: "Chế độ nhanh - Một câu hỏi tại một thời điểm",
+    rapidTestMode: "Chế độ nhanh",
+    confirmAnswer: "Xác nhận",
+    nextQuestion: "Câu tiếp theo",
+    restartRapid: "Chơi lại",
+    correctAnswerRapid: "Đúng! Tuyệt vời! 🎉",
+    incorrectAnswerRapid: "Sai! Đáp án đúng là",
+    rapidScore: "Điểm số",
+    rapidCompleted: "Hoàn thành chế độ nhanh!",
+    
     // Achievement
     achievementUnlocked: "Thành tựu mở khóa!",
     questionCompleted: "Câu hỏi đã hoàn thành",
@@ -170,6 +182,18 @@ const translations = {
     retakeIncorrect: "Retake Incorrect",
     answerReview: "Answer Review",
     correctAnswer: "Correct answer(s):",
+    
+    // Rapid test mode
+    rapidTest: "Rapid Test",
+    rapidTestDesc: "Fast mode - One question at a time",
+    rapidTestMode: "Rapid Mode",
+    confirmAnswer: "Confirm",
+    nextQuestion: "Next Question",
+    restartRapid: "Restart",
+    correctAnswerRapid: "Correct! Great job! 🎉",
+    incorrectAnswerRapid: "Wrong! The correct answer is",
+    rapidScore: "Score",
+    rapidCompleted: "Rapid mode completed!",
     
     // Achievement
     achievementUnlocked: "ACHIEVEMENT UNLOCKED!",
@@ -292,6 +316,20 @@ const VisualTestPlatform = () => {
   const [achievementData, setAchievementData] = useState({ questionNum: 0, totalQuestions: 0, questionText: '', progressPercentage: 0 });
   const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
   const [imageZoomLevel, setImageZoomLevel] = useState(1); // 1 = 100%, 1.5 = 150%, etc.
+  
+  // Rapid test mode state
+  const [rapidTestMode, setRapidTestMode] = useState(false);
+  const [rapidCurrentQuestion, setRapidCurrentQuestion] = useState(null);
+  const [rapidAnswer, setRapidAnswer] = useState(null);
+  const [rapidShowResult, setRapidShowResult] = useState(false);
+  const [rapidScore, setRapidScore] = useState(0);
+  const [rapidAnsweredQuestions, setRapidAnsweredQuestions] = useState(new Set());
+  const [rapidTotalQuestions, setRapidTotalQuestions] = useState(0);
+  const [showParticleEffect, setShowParticleEffect] = useState(false);
+  
+  // Sound system
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [audioContext, setAudioContext] = useState(null);
 
   // Crop page state
   const [cropState, setCropState] = useState({
@@ -318,6 +356,44 @@ const VisualTestPlatform = () => {
       setTimeout(() => setSimpleAnimations(true), 100);
     }
   };
+
+  // Particle effects component
+  const ParticleEffect = ({ isVisible }) => {
+    if (!isVisible) return null;
+
+    const particles = [];
+    const colors = ['#10b981', '#34d399', '#6ee7b7', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+    
+    for (let i = 0; i < 20; i++) {
+      particles.push(
+        <div
+          key={i}
+          className="particle confetti"
+          style={{
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            background: `linear-gradient(45deg, ${colors[Math.floor(Math.random() * colors.length)]}, ${colors[Math.floor(Math.random() * colors.length)]})`,
+            animationDelay: `${Math.random() * 0.5}s`,
+            animationDuration: `${1 + Math.random()}s`
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="particle-container">
+        {particles}
+      </div>
+    );
+  };
+
+  // Initialize sound system and load preferences
+  useEffect(() => {
+    const savedSoundEnabled = localStorage.getItem('azota-sound-enabled');
+    if (savedSoundEnabled !== null) {
+      setSoundEnabled(savedSoundEnabled === 'true');
+    }
+  }, []);
 
   // Clean up achievement timeout on unmount
   useEffect(() => {
@@ -996,7 +1072,6 @@ const VisualTestPlatform = () => {
     startTestWithQuestions(test, test.questions, 'full');
   };
 
-  // Submit test
   const submitTest = () => {
     let score = 0;
     const pointsPerQuestion = 10 / currentTest.questions.length;
@@ -1027,6 +1102,8 @@ const VisualTestPlatform = () => {
     });
     setIncorrectQuestions(incorrect);
     setCurrentPage("results");
+    playSubmitSound(); // Sound effect for test submission
+    playPageTransitionSound(); // Sound effect for page transition
     triggerSimpleAnimation("results");
   };
 
@@ -1050,6 +1127,7 @@ const VisualTestPlatform = () => {
     setAchievementData({ questionNum: 0, totalQuestions: 0, questionText: '', progressPercentage: 0 }); // Reset achievement data
     setImageZoomLevel(1); // Reset image zoom to 100%
     setCurrentPage("test");
+    playPageTransitionSound(); // Sound effect
     triggerSimpleAnimation("test");
   };
 
@@ -1112,6 +1190,7 @@ const VisualTestPlatform = () => {
         progressPercentage: newProgressPercentage
       });
       setShowAchievement(true);
+      playAchievementSound(); // Sound effect for achievement
       
       // Hide achievement after 3 seconds
       window.achievementTimeout = setTimeout(() => {
@@ -1131,6 +1210,196 @@ const VisualTestPlatform = () => {
 
   const resetImageSize = () => {
     setImageZoomLevel(1); // Reset to 100%
+  };
+
+  // Rapid test mode functions
+  const startRapidTest = (test) => {
+    // Clear any existing achievement timeout
+    if (window.achievementTimeout) {
+      clearTimeout(window.achievementTimeout);
+    }
+    
+    const questions = test.questions.filter(q => q.type !== 'none'); // Filter out display-only questions
+    setRapidTestMode(true);
+    setRapidCurrentQuestion(null);
+    setRapidAnswer(null);
+    setRapidShowResult(false);
+    setRapidScore(0);
+    setRapidAnsweredQuestions(new Set());
+    setRapidTotalQuestions(questions.length);
+    setShowParticleEffect(false);
+    
+    // Get first random question
+    getRandomRapidQuestion(questions);
+    setCurrentPage("rapid-test");
+    playPageTransitionSound(); // Sound effect
+    triggerSimpleAnimation("rapid-test");
+  };
+
+  const getRandomRapidQuestion = (questions) => {
+    const availableQuestions = questions.filter(q => !rapidAnsweredQuestions.has(q.id));
+    if (availableQuestions.length === 0) {
+      // All questions answered, show completion
+      setCurrentPage("rapid-results");
+      playTestCompleteSound(); // Sound effect
+      triggerSimpleAnimation("rapid-results");
+      return;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+    const randomQuestion = availableQuestions[randomIndex];
+    setRapidCurrentQuestion(randomQuestion);
+    setRapidAnswer(null);
+    setRapidShowResult(false);
+    setShowParticleEffect(false);
+    playQuestionAppearSound(); // Sound effect
+  };
+
+  const submitRapidAnswer = () => {
+    if (!rapidCurrentQuestion || !rapidAnswer) return;
+    
+    const isCorrect = checkRapidAnswer(rapidCurrentQuestion, rapidAnswer);
+    setRapidShowResult(true);
+    
+    if (isCorrect) {
+      setRapidScore(prev => prev + 1);
+      setShowParticleEffect(true);
+      playCorrectSound(); // Sound effect for correct answer
+      
+      // Hide particle effect after animation
+      setTimeout(() => {
+        setShowParticleEffect(false);
+      }, 2000);
+    } else {
+      playIncorrectSound(); // Sound effect for incorrect answer
+    }
+    
+    // Add to answered questions
+    setRapidAnsweredQuestions(prev => new Set([...prev, rapidCurrentQuestion.id]));
+  };
+
+  const checkRapidAnswer = (question, answer) => {
+    if (question.type === "text_input") {
+      const userSplit = (answer || "").split(',').map(a => a.trim().toLowerCase()).filter(a => a);
+      const correctSplit = question.correctAnswer.map(a => a.toLowerCase());
+      return userSplit.length === correctSplit.length && userSplit.every(a => correctSplit.includes(a));
+    } else {
+      const userAns = Array.isArray(answer) ? answer : [answer];
+      const correctAns = question.correctAnswer || [];
+      return userAns.length === correctAns.length && userAns.every(a => correctAns.includes(a));
+    }
+  };
+
+  const nextRapidQuestion = () => {
+    const test = tests.find(t => t.questions.some(q => q.id === rapidCurrentQuestion?.id)) || currentTest;
+    const questions = test.questions.filter(q => q.type !== 'none');
+    getRandomRapidQuestion(questions);
+  };
+
+  const restartRapidTest = () => {
+    const test = tests.find(t => t.questions.some(q => q.id === rapidCurrentQuestion?.id)) || currentTest;
+    const questions = test.questions.filter(q => q.type !== 'none');
+    setRapidScore(0);
+    setRapidAnsweredQuestions(new Set());
+    getRandomRapidQuestion(questions);
+  };
+
+  const exitRapidTest = () => {
+    setRapidTestMode(false);
+    setCurrentPage("home");
+    setRapidCurrentQuestion(null);
+    setRapidAnswer(null);
+    setRapidShowResult(false);
+    setShowParticleEffect(false);
+    triggerSimpleAnimation("home");
+  };
+
+  // Sound system functions
+  const initAudioContext = () => {
+    if (!audioContext) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      setAudioContext(ctx);
+    }
+  };
+
+  const playSound = (frequency, duration, type = 'sine', volume = 0.1) => {
+    if (!soundEnabled || !audioContext) return;
+    
+    try {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+      oscillator.type = type;
+      
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (error) {
+      console.warn('Sound playback failed:', error);
+    }
+  };
+
+  const playClickSound = () => {
+    playSound(800, 0.1, 'sine', 0.05);
+  };
+
+  const playHoverSound = () => {
+    playSound(600, 0.05, 'sine', 0.03);
+  };
+
+  const playCorrectSound = () => {
+    // Success chord - multiple frequencies
+    setTimeout(() => playSound(523, 0.3, 'sine', 0.1), 0);   // C
+    setTimeout(() => playSound(659, 0.3, 'sine', 0.1), 100); // E
+    setTimeout(() => playSound(784, 0.3, 'sine', 0.1), 200); // G
+  };
+
+  const playIncorrectSound = () => {
+    // Sad descending tone
+    playSound(400, 0.5, 'sawtooth', 0.1);
+    setTimeout(() => playSound(350, 0.5, 'sawtooth', 0.1), 100);
+    setTimeout(() => playSound(300, 0.5, 'sawtooth', 0.1), 200);
+  };
+
+  const playAchievementSound = () => {
+    // Triumphant fanfare
+    const notes = [523, 659, 784, 1047]; // C, E, G, C (higher)
+    notes.forEach((freq, index) => {
+      setTimeout(() => playSound(freq, 0.4, 'triangle', 0.08), index * 150);
+    });
+  };
+
+  const playPageTransitionSound = () => {
+    playSound(300, 0.2, 'sine', 0.05);
+  };
+
+  const playTestCompleteSound = () => {
+    // Victory melody
+    const melody = [523, 659, 784, 1047, 784, 659, 523];
+    melody.forEach((freq, index) => {
+      setTimeout(() => playSound(freq, 0.3, 'sine', 0.1), index * 200);
+    });
+  };
+
+  const playQuestionAppearSound = () => {
+    playSound(400, 0.15, 'sine', 0.06);
+  };
+
+  const playSubmitSound = () => {
+    playSound(500, 0.3, 'square', 0.08);
+  };
+
+  const toggleSound = () => {
+    initAudioContext();
+    setSoundEnabled(!soundEnabled);
+    localStorage.setItem('azota-sound-enabled', !soundEnabled);
   };
 
   // Header component with theme and language switchers
@@ -1155,6 +1424,14 @@ const VisualTestPlatform = () => {
           >
             <Globe className="w-4 h-4 md:w-5 md:h-5" />
             <span className="hidden sm:inline ml-1 text-sm font-medium">{language.toUpperCase()}</span>
+          </button>
+          <button
+            onClick={toggleSound}
+            className={`p-2 rounded-lg transition-all duration-200 ${soundEnabled ? (theme === 'dark' ? 'bg-gray-700 text-green-400 hover:bg-gray-600' : 'bg-gray-100 text-green-600 hover:bg-gray-200') : (theme === 'dark' ? 'bg-gray-700 text-red-400 hover:bg-gray-600' : 'bg-gray-100 text-red-600 hover:bg-gray-200')}`}
+            title={soundEnabled ? (language === 'vi' ? 'Tắt âm thanh' : 'Mute sounds') : (language === 'vi' ? 'Bật âm thanh' : 'Unmute sounds')}
+          >
+            {soundEnabled ? '🔊' : '🔇'}
+            <span className="hidden sm:inline ml-1 text-sm font-medium">{soundEnabled ? 'ON' : 'OFF'}</span>
           </button>
         </div>
       </div>
@@ -1193,7 +1470,10 @@ const VisualTestPlatform = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <button
-                onClick={autoDetectQuestions}
+                onClick={() => {
+                  playClickSound();
+                  autoDetectQuestions();
+                }}
                 disabled={isProcessing}
                 className={`border-2 rounded-lg p-6 lg:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl ${theme === 'dark' ? 'border-green-600 bg-green-800 hover:bg-green-700 text-white' : 'border-green-300 bg-green-500 hover:bg-green-600 text-white'} disabled:opacity-50 shadow-lg`}
               >
@@ -1218,6 +1498,8 @@ const VisualTestPlatform = () => {
 
               <button
                 onClick={() => {
+                  playClickSound();
+                  playPageTransitionSound();
                   setCurrentPage("crop");
                   triggerSimpleAnimation("crop");
                 }}
@@ -1251,6 +1533,8 @@ const VisualTestPlatform = () => {
 
             <button
               onClick={() => {
+                playClickSound();
+                playPageTransitionSound();
                 setEditingTest(null);
                 setCurrentPage("home");
                 triggerSimpleAnimation("home");
@@ -1284,6 +1568,8 @@ const VisualTestPlatform = () => {
               </div>
               <button
                 onClick={() => {
+                  playClickSound();
+                  playPageTransitionSound();
                   setCropState({
                     currentPageIndex: 0,
                     isSelecting: false,
@@ -1347,7 +1633,10 @@ const VisualTestPlatform = () => {
               </div>
 
               <button
-                onClick={finishCropping}
+                onClick={() => {
+                  playClickSound();
+                  finishCropping();
+                }}
                 className={`font-semibold py-2 px-6 rounded transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
               >
                 {t('doneSetAnswers')}
@@ -1603,17 +1892,32 @@ const VisualTestPlatform = () => {
                         </p>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
                       <button
-                        onClick={() => startTest(test)}
+                        onClick={() => {
+                          playClickSound();
+                          startTest(test);
+                        }}
                         className={`font-semibold py-2 px-3 lg:px-4 rounded flex items-center justify-center gap-1 lg:gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 text-xs lg:text-sm ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
                       >
                         <Play className="w-3 h-3 lg:w-4 lg:h-4" /> {t('take')}
                       </button>
                       <button
                         onClick={() => {
+                          playClickSound();
+                          startRapidTest(test);
+                        }}
+                        className={`font-semibold py-2 px-3 lg:px-4 rounded flex items-center justify-center gap-1 lg:gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 text-xs lg:text-sm ${theme === 'dark' ? 'bg-orange-700 hover:bg-orange-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
+                        title={t('rapidTestDesc')}
+                      >
+                        ⚡ {t('rapidTest')}
+                      </button>
+                      <button
+                        onClick={() => {
+                          playClickSound();
                           setEditingTest(test);
                           setCurrentPage("edit");
+                          playPageTransitionSound();
                           triggerSimpleAnimation("edit");
                         }}
                         className={`font-semibold py-2 px-3 lg:px-4 rounded flex items-center justify-center gap-1 lg:gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 text-xs lg:text-sm ${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
@@ -1621,13 +1925,17 @@ const VisualTestPlatform = () => {
                         <Edit2 className="w-3 h-3 lg:w-4 lg:h-4" /> {t('edit')}
                       </button>
                       <button
-                        onClick={() => downloadTest(test)}
+                        onClick={() => {
+                          playClickSound();
+                          downloadTest(test);
+                        }}
                         className={`font-semibold py-2 px-3 lg:px-4 rounded flex items-center justify-center gap-1 lg:gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 text-xs lg:text-sm ${theme === 'dark' ? 'bg-purple-700 hover:bg-purple-600 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'}`}
                       >
                         <Upload className="w-3 h-3 lg:w-4 lg:h-4 rotate-180" /> {t('save')}
                       </button>
                       <button
                         onClick={() => {
+                          playClickSound();
                           if (confirm(t('testDeleted'))) {
                             setTests(tests.filter((t) => t.id !== test.id));
                           }
@@ -1663,6 +1971,8 @@ const VisualTestPlatform = () => {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6 lg:mb-8">
             <button
               onClick={() => {
+                playClickSound();
+                playPageTransitionSound();
                 setEditingTest(null);
                 setCurrentPage("home");
                 triggerSimpleAnimation("home");
@@ -1892,14 +2202,20 @@ const VisualTestPlatform = () => {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={addQuestion}
+                onClick={() => {
+                  playClickSound();
+                  addQuestion();
+                }}
                 className={`flex-1 font-semibold py-3 px-4 rounded flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-indigo-700 hover:bg-indigo-600 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'}`}
               >
                 <Plus className="w-5 h-5" /> {t('addQuestion')}
               </button>
 
               <button
-                onClick={saveTest}
+                onClick={() => {
+                  playClickSound();
+                  saveTest();
+                }}
                 className={`flex-1 font-semibold py-3 px-4 rounded shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
               >
                 {t('save')}
@@ -2011,6 +2327,7 @@ const VisualTestPlatform = () => {
             </div>
             <button
               onClick={() => {
+                playClickSound();
                 // Clear achievement timeout
                 if (window.achievementTimeout) {
                   clearTimeout(window.achievementTimeout);
@@ -2082,6 +2399,7 @@ const VisualTestPlatform = () => {
                         {question.options.map((option) => (
                           <label
                             key={option.letter}
+                            onMouseEnter={() => playHoverSound()}
                             className={`flex items-center p-3 border-2 rounded hover:border-indigo-500 hover:bg-indigo-50 cursor-pointer transition-all duration-200 ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300'}`}
                           >
                             <input
@@ -2127,6 +2445,7 @@ const VisualTestPlatform = () => {
                                 : [...current, option.letter].sort();
                               handleAnswerSelect(question.id, newAnswers);
                             }}
+                            onMouseEnter={() => playHoverSound()}
                             className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold text-sm lg:text-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${
                               (userAnswers[question.id] || []).includes(option.letter)
                                 ? "bg-indigo-500 text-white"
@@ -2154,6 +2473,7 @@ const VisualTestPlatform = () => {
                         {question.options.map((option) => (
                           <label
                             key={option.letter}
+                            onMouseEnter={() => playHoverSound()}
                             className={`flex items-center p-3 border-2 rounded hover:border-indigo-500 hover:bg-indigo-50 cursor-pointer transition-all duration-200 ${theme === 'dark' ? 'border-gray-600 hover:bg-gray-700' : 'border-gray-300'}`}
                           >
                             <input
@@ -2199,6 +2519,7 @@ const VisualTestPlatform = () => {
             <div className="flex flex-col sm:flex-row gap-4 mt-6 lg:mt-8">
               <button
                 onClick={() => {
+                  playClickSound();
                   // Clear achievement timeout
                   if (window.achievementTimeout) {
                     clearTimeout(window.achievementTimeout);
@@ -2216,7 +2537,10 @@ const VisualTestPlatform = () => {
                 {t('cancel')}
               </button>
               <button
-                onClick={submitTest}
+                onClick={() => {
+                  playClickSound();
+                  submitTest();
+                }}
                 className={`flex-1 font-semibold py-3 px-4 rounded shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
               >
                 {t('submit')}
@@ -2271,6 +2595,8 @@ const VisualTestPlatform = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => {
+                  playClickSound();
+                  playPageTransitionSound();
                   setCurrentPage("home");
                   setCurrentTest(null);
                   setTestResults(null);
@@ -2284,6 +2610,7 @@ const VisualTestPlatform = () => {
               </button>
               <button
                 onClick={() => {
+                  playClickSound();
                   // Clear achievement timeout
                   if (window.achievementTimeout) {
                     clearTimeout(window.achievementTimeout);
@@ -2303,6 +2630,7 @@ const VisualTestPlatform = () => {
               {getIncorrectQuestions().length > 0 && (
                 <button
                   onClick={() => {
+                    playClickSound();
                     const incorrect = getIncorrectQuestions();
                     startTestWithQuestions(currentTest, incorrect, 'incorrect');
                   }}
@@ -2387,6 +2715,270 @@ const VisualTestPlatform = () => {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Rapid test mode page
+  if (currentPage === "rapid-test" && rapidTestMode && rapidCurrentQuestion) {
+    const isCorrect = rapidShowResult ? checkRapidAnswer(rapidCurrentQuestion, rapidAnswer) : false;
+
+    return (
+      <PageWrapper>
+        <ParticleEffect isVisible={showParticleEffect} />
+        
+        <div className="rapid-test-container">
+          {/* Score display */}
+          <div className={`mb-6 px-6 py-3 rounded-full ${
+            theme === 'dark' ? 'bg-gray-800 border border-gray-600' : 'bg-white border border-gray-200'
+          } shadow-lg`}>
+            <div className="flex items-center gap-4 text-lg font-bold">
+              <span className={theme === 'dark' ? 'text-white' : 'text-gray-800'}>
+                {t('rapidScore')}: {rapidScore}
+              </span>
+              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
+                |
+              </span>
+              <span className={theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}>
+                {rapidAnsweredQuestions.size} / {rapidTotalQuestions}
+              </span>
+            </div>
+          </div>
+
+          {/* Question card */}
+          <div className={`rapid-question-card ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl p-8`}>
+            <h2 className={`text-2xl lg:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-6 text-center`}>
+              {language === 'vi' ? 'Câu hỏi' : 'Question'} {rapidAnsweredQuestions.size + 1}
+            </h2>
+
+            {rapidCurrentQuestion.text && (
+              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-6 text-lg lg:text-xl text-center`}>
+                {rapidCurrentQuestion.text}
+              </p>
+            )}
+
+            {rapidCurrentQuestion.image && (
+              <div className="mb-6 flex justify-center">
+                <img
+                  src={rapidCurrentQuestion.image}
+                  alt="Question"
+                  className="max-w-full max-h-64 object-contain rounded border-2 border-gray-200"
+                />
+              </div>
+            )}
+
+            {!rapidShowResult ? (
+              // Answer selection
+              <div className="space-y-4">
+                {rapidCurrentQuestion.type === "multiple_choice" && rapidCurrentQuestion.options && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {rapidCurrentQuestion.options.map((option) => (
+                      <button
+                        key={option.letter}
+                        onClick={() => setRapidAnswer([option.letter])}
+                        className={`p-4 rounded-lg border-2 text-left transition-all duration-200 hover:scale-105 ${
+                          rapidAnswer?.includes(option.letter)
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : theme === 'dark'
+                            ? 'border-gray-600 hover:border-gray-500 bg-gray-700 text-gray-300'
+                            : 'border-gray-300 hover:border-gray-400 bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <span className="font-bold mr-3">{option.letter}.</span>
+                        {option.text}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {rapidCurrentQuestion.type === "true_false" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {rapidCurrentQuestion.options?.map((option) => (
+                      <button
+                        key={option.letter}
+                        onClick={() => setRapidAnswer([option.letter])}
+                        className={`p-4 rounded-lg border-2 text-center transition-all duration-200 hover:scale-105 ${
+                          rapidAnswer?.includes(option.letter)
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : theme === 'dark'
+                            ? 'border-gray-600 hover:border-gray-500 bg-gray-700 text-gray-300'
+                            : 'border-gray-300 hover:border-gray-400 bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        {option.text}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {rapidCurrentQuestion.type === "text_input" && (
+                  <div className="space-y-4">
+                    <input
+                      type="text"
+                      value={rapidAnswer || ""}
+                      onChange={(e) => setRapidAnswer(e.target.value)}
+                      placeholder={language === 'vi' ? 'Nhập câu trả lời của bạn' : 'Enter your answer'}
+                      className={`w-full p-4 rounded-lg border-2 text-lg ${
+                        theme === 'dark' 
+                          ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400'
+                          : 'border-gray-300 bg-white text-gray-800 placeholder-gray-500'
+                      } focus:outline-none focus:border-blue-500`}
+                    />
+                  </div>
+                )}
+
+                {rapidCurrentQuestion.type === "none" && (
+                  <div className={`p-6 rounded-lg text-center ${
+                    theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    <p className="text-lg">
+                      {language === 'vi' ? 'Câu hỏi hiển thị - không cần trả lời' : 'Display question - no answer required'}
+                    </p>
+                    <button
+                      onClick={nextRapidQuestion}
+                      className={`mt-4 px-6 py-3 rounded-lg font-bold transition-all duration-200 hover:scale-105 ${
+                        theme === 'dark' ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      }`}
+                    >
+                      {t('nextQuestion')}
+                    </button>
+                  </div>
+                )}
+
+                {rapidCurrentQuestion.type !== "none" && (
+                  <div className="flex justify-center mt-8">
+                    <button
+                      onClick={submitRapidAnswer}
+                      disabled={!rapidAnswer || (Array.isArray(rapidAnswer) && rapidAnswer.length === 0)}
+                      className={`px-8 py-4 rounded-lg font-bold text-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${
+                        theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
+                      }`}
+                    >
+                      {t('confirmAnswer')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Results display
+              <div className="text-center space-y-6">
+                <div className={`p-6 rounded-lg ${
+                  isCorrect ? 'rapid-result-correct' : 'rapid-result-incorrect'
+                }`}>
+                  <div className="text-3xl mb-4">
+                    {isCorrect ? '🎉' : '❌'}
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">
+                    {isCorrect ? t('correctAnswerRapid') : t('incorrectAnswerRapid')}
+                  </h3>
+                  {!isCorrect && (
+                    <p className="text-lg opacity-90">
+                      {rapidCurrentQuestion.correctAnswer.join(", ")}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      restartRapidTest();
+                    }}
+                    className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 hover:scale-105 ${
+                      theme === 'dark' ? 'bg-red-700 hover:bg-red-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'
+                    }`}
+                  >
+                    {t('restartRapid')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      playClickSound();
+                      nextRapidQuestion();
+                    }}
+                    className={`px-6 py-3 rounded-lg font-bold transition-all duration-200 hover:scale-105 ${
+                      theme === 'dark' ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                  >
+                    {t('nextQuestion')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Exit button */}
+            <div className="flex justify-center mt-8">
+              <button
+                onClick={() => {
+                  playClickSound();
+                  playPageTransitionSound();
+                  exitRapidTest();
+                }}
+                className={`px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 ${
+                  theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'
+                }`}
+              >
+                {language === 'vi' ? 'Thoát' : 'Exit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Rapid test results page
+  if (currentPage === "rapid-results") {
+    return (
+      <PageWrapper>
+        <div className="w-full flex items-center justify-center min-h-[60vh]">
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl p-8 text-center max-w-md w-full`}>
+            <div className="text-6xl mb-6">
+              {rapidScore === rapidTotalQuestions ? '🏆' : rapidScore > rapidTotalQuestions / 2 ? '👏' : '💪'}
+            </div>
+            <h2 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>
+              {t('rapidCompleted')}
+            </h2>
+            <div className={`text-5xl font-bold mb-6 ${
+              rapidScore === rapidTotalQuestions ? 'text-green-500' : 
+              rapidScore > rapidTotalQuestions / 2 ? 'text-blue-500' : 'text-orange-500'
+            }`}>
+              {rapidScore} / {rapidTotalQuestions}
+            </div>
+            <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mb-8`}>
+              {rapidScore === rapidTotalQuestions 
+                ? (language === 'vi' ? 'Hoàn hảo! Bạn đã trả lời đúng tất cả câu hỏi!' : 'Perfect! You got all questions correct!')
+                : rapidScore > rapidTotalQuestions / 2
+                ? (language === 'vi' ? 'Tuyệt vời! Làm tốt lắm!' : 'Great job! Well done!')
+                : (language === 'vi' ? 'Tiếp tục luyện tập nhé!' : 'Keep practicing!')
+              }
+            </p>
+            <div className="space-y-4">
+              <button
+                onClick={() => {
+                  playClickSound();
+                  restartRapidTest();
+                }}
+                className={`w-full py-3 px-6 rounded-lg font-bold transition-all duration-200 hover:scale-105 ${
+                  theme === 'dark' ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {t('restartRapid')}
+              </button>
+              <button
+                onClick={() => {
+                  playClickSound();
+                  playPageTransitionSound();
+                  exitRapidTest();
+                }}
+                className={`w-full py-3 px-6 rounded-lg font-bold transition-all duration-200 hover:scale-105 ${
+                  theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'
+                }`}
+              >
+                {language === 'vi' ? 'Quay về trang chủ' : 'Back to Home'}
+              </button>
             </div>
           </div>
         </div>
