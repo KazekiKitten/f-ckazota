@@ -63,8 +63,14 @@ const translations = {
     passed: "ĐẠT",
     failed: "KHÔNG ĐẠT",
     retakeTest: "Làm lại bài",
+    retakeIncorrect: "Làm lại câu sai",
     answerReview: "Xem lại câu trả lời",
     correctAnswer: "Câu trả lời đúng:",
+    
+    // Achievement
+    achievementUnlocked: "Thành tựu mở khóa!",
+    questionCompleted: "Câu hỏi đã hoàn thành",
+    overallProgress: "Tiến độ tổng thể",
     
     // Edit mode
     setAnswers: "Đặt câu trả lời đúng (A, B, C, hoặc D)",
@@ -161,8 +167,14 @@ const translations = {
     passed: "PASSED",
     failed: "FAILED",
     retakeTest: "Retake Test",
+    retakeIncorrect: "Retake Incorrect",
     answerReview: "Answer Review",
     correctAnswer: "Correct answer(s):",
+    
+    // Achievement
+    achievementUnlocked: "ACHIEVEMENT UNLOCKED!",
+    questionCompleted: "Question Completed",
+    overallProgress: "Overall Progress",
     
     // Edit mode
     setAnswers: "Set Correct Answers (A, B, C, or D)",
@@ -274,6 +286,13 @@ const VisualTestPlatform = () => {
   const [editingTest, setEditingTest] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
+  const [incorrectQuestions, setIncorrectQuestions] = useState([]);
+  const [retakeMode, setRetakeMode] = useState('full'); // 'full' or 'incorrect'
+  const [showAchievement, setShowAchievement] = useState(false);
+  const [achievementData, setAchievementData] = useState({ questionNum: 0, totalQuestions: 0, questionText: '', progressPercentage: 0 });
+  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
+  const [imageZoomLevel, setImageZoomLevel] = useState(1); // 1 = 100%, 1.5 = 150%, etc.
+
   // Crop page state
   const [cropState, setCropState] = useState({
     currentPageIndex: 0,
@@ -288,21 +307,26 @@ const VisualTestPlatform = () => {
   const { t, toggleLanguage, language } = React.useContext(LanguageContext);
   const { theme, toggleTheme } = React.useContext(ThemeContext);
 
-  // Enhanced animations
-  const [pageAnimations, setPageAnimations] = useState({
-    home: true,
-    edit: false,
-    test: false,
-    results: false,
-  });
+  // Simple animations - no page resets
+  const [simpleAnimations, setSimpleAnimations] = useState(true);
 
-  // Animation helper
-  const triggerAnimation = (page) => {
-    setPageAnimations(prev => ({ ...prev, [page]: false }));
-    setTimeout(() => {
-      setPageAnimations(prev => ({ ...prev, [page]: true }));
-    }, 50);
+  // Simple animation helper - no page resets
+  const triggerSimpleAnimation = (page) => {
+    // Just a lightweight state update without disrupting the UI
+    if (simpleAnimations) {
+      setSimpleAnimations(false);
+      setTimeout(() => setSimpleAnimations(true), 100);
+    }
   };
+
+  // Clean up achievement timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (window.achievementTimeout) {
+        clearTimeout(window.achievementTimeout);
+      }
+    };
+  }, []);
 
   // Enhanced crop selection with animations
   const handleCropMouseDown = (e, imgRef) => {
@@ -424,7 +448,7 @@ const VisualTestPlatform = () => {
     });
 
     setCurrentPage("edit");
-    triggerAnimation("edit");
+    triggerSimpleAnimation("edit");
   };
 
  // Parse document text to extract questions
@@ -564,7 +588,7 @@ const VisualTestPlatform = () => {
       setTests([...tests, newTest]);
       setEditingTest(newTest);
       setCurrentPage("pdf-mode-select");
-      triggerAnimation("pdf-mode-select");
+      triggerSimpleAnimation("pdf-mode-select");
     } catch (error) {
       alert((language === 'vi' ? "Lỗi xử lý PDF: " : "Error processing PDF: ") + error.message);
     }
@@ -703,7 +727,7 @@ const VisualTestPlatform = () => {
       if (questions.length === 0) {
         alert(t('noQuestionsDetected'));
         setCurrentPage("crop");
-        triggerAnimation("crop");
+        triggerSimpleAnimation("crop");
         return;
       }
 
@@ -719,7 +743,7 @@ const VisualTestPlatform = () => {
       });
 
       setCurrentPage("edit");
-      triggerAnimation("edit");
+      triggerSimpleAnimation("edit");
       alert(t('questionsDetected').replace('{count}', numberedQuestions.length));
     } catch (error) {
       console.error("Auto-detect error:", error);
@@ -758,7 +782,7 @@ const VisualTestPlatform = () => {
       setTests([...tests, newTest]);
       setEditingTest(newTest);
       setCurrentPage("crop");
-      triggerAnimation("crop");
+      triggerSimpleAnimation("crop");
     } catch (error) {
       alert((language === 'vi' ? "Lỗi xử lý hình ảnh: " : "Error processing images: ") + error.message);
     }
@@ -855,7 +879,7 @@ const VisualTestPlatform = () => {
       setTests([...tests, newTest]);
       setEditingTest(newTest);
       setCurrentPage("edit");
-      triggerAnimation("edit");
+      triggerSimpleAnimation("edit");
     } catch (error) {
       alert((language === 'vi' ? "Lỗi xử lý file text: " : "Error processing text file: ") + error.message);
     }
@@ -893,7 +917,7 @@ const VisualTestPlatform = () => {
       setTests([...tests, newTest]);
       setEditingTest(newTest);
       setCurrentPage("edit");
-      triggerAnimation("edit");
+      triggerSimpleAnimation("edit");
     } catch (error) {
       alert((language === 'vi' ? "Lỗi xử lý file DOCX: " : "Error processing DOCX file: ") + error.message);
     }
@@ -963,23 +987,20 @@ const VisualTestPlatform = () => {
     setTests(tests.map((t) => (t.id === editingTest.id ? editingTest : t)));
     setEditingTest(null);
     setCurrentPage("home");
-    triggerAnimation("home");
+    triggerSimpleAnimation("home");
     alert(t('saveSuccess'));
   };
 
   // Start test
   const startTest = (test) => {
-    setCurrentTest(test);
-    setUserAnswers({});
-    setTestResults(null);
-    setCurrentPage("test");
-    triggerAnimation("test");
+    startTestWithQuestions(test, test.questions, 'full');
   };
 
   // Submit test
   const submitTest = () => {
     let score = 0;
     const pointsPerQuestion = 10 / currentTest.questions.length;
+    const incorrect = [];
 
     currentTest.questions.forEach((q) => {
       let isCorrect = false;
@@ -994,6 +1015,8 @@ const VisualTestPlatform = () => {
       }
       if (isCorrect) {
         score += pointsPerQuestion;
+      } else {
+        incorrect.push(q);
       }
     });
 
@@ -1002,8 +1025,112 @@ const VisualTestPlatform = () => {
       total: currentTest.questions.length,
       answers: userAnswers,
     });
+    setIncorrectQuestions(incorrect);
     setCurrentPage("results");
-    triggerAnimation("results");
+    triggerSimpleAnimation("results");
+  };
+
+  // Start test with specific questions (full test or incorrect only)
+  const startTestWithQuestions = (test, questions, mode = 'full') => {
+    // Clear any existing achievement timeout
+    if (window.achievementTimeout) {
+      clearTimeout(window.achievementTimeout);
+    }
+    
+    const filteredTest = {
+      ...test,
+      questions: questions,
+    };
+    setCurrentTest(filteredTest);
+    setUserAnswers({});
+    setTestResults(null);
+    setRetakeMode(mode);
+    setAnsweredQuestions(new Set()); // Reset answered questions
+    setShowAchievement(false); // Hide any existing achievements
+    setAchievementData({ questionNum: 0, totalQuestions: 0, questionText: '', progressPercentage: 0 }); // Reset achievement data
+    setImageZoomLevel(1); // Reset image zoom to 100%
+    setCurrentPage("test");
+    triggerSimpleAnimation("test");
+  };
+
+  // Get incorrect questions from last test
+  const getIncorrectQuestions = () => {
+    if (!testResults || !currentTest) return [];
+    
+    const incorrect = [];
+    currentTest.questions.forEach((q) => {
+      let isCorrect = false;
+      if (q.type === "text_input") {
+        const userSplit = (testResults.answers[q.id] || "").split(',').map(a => a.trim().toLowerCase()).filter(a => a);
+        const correctSplit = q.correctAnswer.map(a => a.toLowerCase());
+        isCorrect = userSplit.length === correctSplit.length && userSplit.every(a => correctSplit.includes(a));
+      } else if (q.type === "none") {
+        isCorrect = true; // "None" type questions are always considered correct
+      } else {
+        const userAns = testResults.answers[q.id] || [];
+        const correctAns = q.correctAnswer || [];
+        isCorrect = userAns.length === correctAns.length && userAns.every(a => correctAns.includes(a));
+      }
+      if (!isCorrect) {
+        incorrect.push(q);
+      }
+    });
+    return incorrect;
+  };
+
+  // Handle answer selection with achievement
+  const handleAnswerSelect = (questionId, newAnswer) => {
+    // Update answers immediately
+    const updatedAnswers = {
+      ...userAnswers,
+      [questionId]: newAnswer,
+    };
+    setUserAnswers(updatedAnswers);
+    
+    // Check if this is the first time answering this question
+    if (!answeredQuestions.has(questionId)) {
+      const newAnsweredQuestions = new Set([...answeredQuestions, questionId]);
+      setAnsweredQuestions(newAnsweredQuestions);
+      
+      // Show achievement immediately
+      const currentQuestion = currentTest.questions.find(q => q.id === questionId);
+      const questionIndex = currentTest.questions.findIndex(q => q.id === questionId);
+      const displayNumber = retakeMode === 'incorrect' ? (questionIndex + 1) : (currentQuestion?.number || questionIndex + 1);
+      const totalQuestions = currentTest.questions.length;
+      const newProgressPercentage = Math.round((newAnsweredQuestions.size / totalQuestions) * 100);
+      
+      // Clear any existing achievement timeout
+      if (window.achievementTimeout) {
+        clearTimeout(window.achievementTimeout);
+      }
+      
+      // Set achievement data and show it
+      setAchievementData({
+        questionNum: displayNumber,
+        totalQuestions: totalQuestions,
+        questionText: currentQuestion?.text?.length > 50 ? currentQuestion.text.substring(0, 50) + '...' : (currentQuestion?.text || ''),
+        progressPercentage: newProgressPercentage
+      });
+      setShowAchievement(true);
+      
+      // Hide achievement after 3 seconds
+      window.achievementTimeout = setTimeout(() => {
+        setShowAchievement(false);
+      }, 3000);
+    }
+  };
+
+  // Image zoom controls
+  const increaseImageSize = () => {
+    setImageZoomLevel(prev => Math.min(prev + 0.25, 3)); // Max 300%
+  };
+
+  const decreaseImageSize = () => {
+    setImageZoomLevel(prev => Math.max(prev - 0.25, 0.5)); // Min 50%
+  };
+
+  const resetImageSize = () => {
+    setImageZoomLevel(1); // Reset to 100%
   };
 
   // Header component with theme and language switchers
@@ -1049,7 +1176,7 @@ const VisualTestPlatform = () => {
     return (
       <PageWrapper>
         <div className="w-full">
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 animate-fade-in`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8`}>
             <h1 className={`text-2xl lg:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4 text-center`}>
               {t('howToExtract')}
             </h1>
@@ -1092,7 +1219,7 @@ const VisualTestPlatform = () => {
               <button
                 onClick={() => {
                   setCurrentPage("crop");
-                  triggerAnimation("crop");
+                  triggerSimpleAnimation("crop");
                 }}
                 className={`border-2 rounded-lg p-6 lg:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl ${theme === 'dark' ? 'border-blue-600 bg-blue-800 hover:bg-blue-700 text-white' : 'border-blue-300 bg-blue-500 hover:bg-blue-600 text-white'} shadow-lg`}
               >
@@ -1126,7 +1253,7 @@ const VisualTestPlatform = () => {
               onClick={() => {
                 setEditingTest(null);
                 setCurrentPage("home");
-                triggerAnimation("home");
+                triggerSimpleAnimation("home");
               }}
               className={`w-full font-semibold py-3 px-4 rounded shadow-lg hover:shadow-xl transition-all duration-200 ${theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'}`}
             >
@@ -1145,7 +1272,7 @@ const VisualTestPlatform = () => {
     return (
       <PageWrapper>
         <div className="w-full">
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 mb-6 animate-fade-in`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 mb-6`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
               <div>
                 <h1 className={`text-xl lg:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
@@ -1166,7 +1293,7 @@ const VisualTestPlatform = () => {
                   });
                   setEditingTest(null);
                   setCurrentPage("home");
-                  triggerAnimation("home");
+                  triggerSimpleAnimation("home");
                 }}
                 className={`py-2 px-4 rounded transition-all duration-200 ${theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'} w-full sm:w-auto`}
               >
@@ -1229,7 +1356,7 @@ const VisualTestPlatform = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className={`xl:col-span-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 animate-slide-in-left`}>
+            <div className={`xl:col-span-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6`}>
               <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>{t('currentPage')}</h3>
               <div className="relative inline-block">
                 <img
@@ -1259,7 +1386,7 @@ const VisualTestPlatform = () => {
               </div>
             </div>
 
-            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 animate-slide-in-right`}>
+            <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6`}>
               <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>
                 {t('croppedQuestions')}
               </h3>
@@ -1267,7 +1394,7 @@ const VisualTestPlatform = () => {
                 {cropState.croppedQuestions.map((q, idx) => (
                   <div
                     key={q.id}
-                    className={`border-2 rounded p-3 transition-all duration-200 hover:shadow-md ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'} animate-bounce-in`}
+                    className={`border-2 rounded p-3 transition-all duration-200 hover:shadow-md ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}
                     style={{ animationDelay: `${idx * 0.1}s` }}
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -1316,7 +1443,7 @@ const VisualTestPlatform = () => {
     return (
       <PageWrapper>
         <div className="w-full">
-          <div className="text-center mb-8 lg:mb-12 animate-fade-in">
+          <div className="text-center mb-8 lg:mb-12">
             <h1 className={`text-3xl lg:text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-2 rainbow-text`}>
               {t('appTitle')}
             </h1>
@@ -1332,7 +1459,7 @@ const VisualTestPlatform = () => {
             </div>
           )}
 
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 mb-8 animate-slide-in-left`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 mb-8`}>
             <h2 className={`text-xl lg:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-6`}>
               {t('uploadContent')}
             </h2>
@@ -1440,7 +1567,7 @@ const VisualTestPlatform = () => {
           </div>
 
           {tests.length > 0 && (
-            <div className="animate-fade-in">
+            <div>
               <h2 className={`text-xl lg:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-6`}>
                 {t('yourTests')}
               </h2>
@@ -1448,7 +1575,7 @@ const VisualTestPlatform = () => {
                 {tests.map((test, idx) => (
                   <div
                     key={test.id}
-                    className={`${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white hover:shadow-lg'} rounded-lg shadow-md p-4 lg:p-6 transition-all duration-300 hover:scale-105 animate-bounce-in`}
+                    className={`${theme === 'dark' ? 'bg-gray-800 hover:bg-gray-750' : 'bg-white hover:shadow-lg'} rounded-lg shadow-md p-4 lg:p-6 transition-all duration-300 hover:scale-105`}
                     style={{ animationDelay: `${idx * 0.1}s` }}
                   >
                     <h3 className={`text-lg lg:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-2`}>
@@ -1487,7 +1614,7 @@ const VisualTestPlatform = () => {
                         onClick={() => {
                           setEditingTest(test);
                           setCurrentPage("edit");
-                          triggerAnimation("edit");
+                          triggerSimpleAnimation("edit");
                         }}
                         className={`font-semibold py-2 px-3 lg:px-4 rounded flex items-center justify-center gap-1 lg:gap-2 shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105 text-xs lg:text-sm ${theme === 'dark' ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
                       >
@@ -1517,7 +1644,7 @@ const VisualTestPlatform = () => {
           )}
 
           {tests.length === 0 && (
-            <div className="text-center py-12 animate-fade-in">
+            <div className="text-center py-12">
               <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'} text-lg`}>
                 {t('noTests')}
               </p>
@@ -1533,12 +1660,12 @@ const VisualTestPlatform = () => {
     return (
       <PageWrapper>
         <div className="w-full">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6 lg:mb-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6 lg:mb-8">
             <button
               onClick={() => {
                 setEditingTest(null);
                 setCurrentPage("home");
-                triggerAnimation("home");
+                triggerSimpleAnimation("home");
               }}
               className={`py-2 px-4 rounded flex items-center gap-2 transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'} w-full sm:w-auto`}
             >
@@ -1554,7 +1681,7 @@ const VisualTestPlatform = () => {
             />
           </div>
 
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 mb-6 animate-slide-in-left`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 mb-6`}>
             <h2 className={`text-lg lg:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>
               {t('setAnswers')}
             </h2>
@@ -1566,7 +1693,7 @@ const VisualTestPlatform = () => {
               {editingTest.questions.map((question, idx) => (
                 <div
                   key={question.id}
-                  className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} rounded-lg shadow-md p-4 lg:p-6 hover:shadow-lg transition-all duration-300 animate-bounce-in border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}
+                  className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-white'} rounded-lg shadow-md p-4 lg:p-6 hover:shadow-lg transition-all duration-300 border ${theme === 'dark' ? 'border-gray-600' : 'border-gray-200'}`}
                   style={{ animationDelay: `${idx * 0.1}s` }}
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
@@ -1786,19 +1913,114 @@ const VisualTestPlatform = () => {
 
   // Test taking page
   if (currentPage === "test" && currentTest) {
+    const progressPercentage = Math.round((answeredQuestions.size / currentTest.questions.length) * 100);
+
     return (
       <PageWrapper>
+        {/* Progress Indicator */}
+        <div className="progress-indicator">
+          <div>✨ {language === 'vi' ? 'Câu hỏi hoàn thành!' : 'Question Completed!'}</div>
+          <div className="progress-counter">
+            {answeredQuestions.size} / {currentTest.questions.length} ({progressPercentage}%)
+          </div>
+        </div>
+
+        {/* Achievement Popup */}
+        {showAchievement && (
+          <div className="achievement-popup">
+            <div className="achievement-content">
+              <div className="achievement-title">✨ {t('achievementUnlocked')}</div>
+              <div className="achievement-subtitle">
+                {t('questionCompleted')} {achievementData.questionNum} / {achievementData.totalQuestions}
+              </div>
+              {achievementData.questionText && (
+                <div className="achievement-subtitle" style={{ fontSize: '12px', opacity: 0.7 }}>
+                  "{achievementData.questionText}"
+                </div>
+              )}
+              <div className="achievement-progress">
+                <div 
+                  className="achievement-progress-bar"
+                  style={{ '--progress-width': `${achievementData.progressPercentage || progressPercentage}%` }}
+                ></div>
+              </div>
+              <div className="achievement-counter">
+                {t('overallProgress')}: {achievementData.progressPercentage || progressPercentage}%
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="w-full">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 lg:mb-8 animate-fade-in gap-4">
-            <h1 className={`text-2xl lg:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-              {currentTest.name}
-            </h1>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 lg:mb-8 gap-4">
+            <div>
+              <h1 className={`text-2xl lg:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                {currentTest.name}
+              </h1>
+              <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                {retakeMode === 'incorrect' 
+                  ? (language === 'vi' ? `Làm lại câu sai (${currentTest.questions.length} câu)` : `Retaking incorrect questions (${currentTest.questions.length} questions)`)
+                  : (language === 'vi' ? `Bài kiểm tra đầy đủ (${currentTest.questions.length} câu)` : `Full test (${currentTest.questions.length} questions)`)
+                }
+              </p>
+              
+              {/* Image Size Controls */}
+              <div className="flex items-center gap-2 mt-3">
+                <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  {language === 'vi' ? 'Kích thước hình ảnh:' : 'Image size:'}
+                </span>
+                <button
+                  onClick={decreaseImageSize}
+                  disabled={imageZoomLevel <= 0.5}
+                  className={`px-2 py-1 rounded text-sm font-bold transition-all duration-200 hover:scale-105 ${
+                    imageZoomLevel <= 0.5
+                      ? 'opacity-50 cursor-not-allowed'
+                      : `${theme === 'dark' ? 'bg-red-700 hover:bg-red-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`
+                  }`}
+                  title={language === 'vi' ? 'Thu nhỏ hình ảnh' : 'Decrease image size'}
+                >
+                  −
+                </button>
+                <span className={`px-3 py-1 rounded text-sm font-semibold ${
+                  theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
+                }`}>
+                  {Math.round(imageZoomLevel * 100)}%
+                </span>
+                <button
+                  onClick={increaseImageSize}
+                  disabled={imageZoomLevel >= 3}
+                  className={`px-2 py-1 rounded text-sm font-bold transition-all duration-200 hover:scale-105 ${
+                    imageZoomLevel >= 3
+                      ? 'opacity-50 cursor-not-allowed'
+                      : `${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`
+                  }`}
+                  title={language === 'vi' ? 'Phóng to hình ảnh' : 'Increase image size'}
+                >
+                  +
+                </button>
+                <button
+                  onClick={resetImageSize}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-all duration-200 hover:scale-105 ${
+                    theme === 'dark' ? 'bg-blue-700 hover:bg-blue-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}
+                  title={language === 'vi' ? 'Đặt lại kích thước' : 'Reset size'}
+                >
+                  {language === 'vi' ? 'Đặt lại' : 'Reset'}
+                </button>
+              </div>
+            </div>
             <button
               onClick={() => {
+                // Clear achievement timeout
+                if (window.achievementTimeout) {
+                  clearTimeout(window.achievementTimeout);
+                }
+                
                 if (confirm(t('exitTest'))) {
                   setCurrentTest(null);
                   setCurrentPage("home");
-                  triggerAnimation("home");
+                  setRetakeMode('full');
+                  triggerSimpleAnimation("home");
                 }
               }}
               className={`py-2 px-4 rounded transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'} w-full sm:w-auto`}
@@ -1807,16 +2029,21 @@ const VisualTestPlatform = () => {
             </button>
           </div>
 
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 animate-slide-in-left`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8`}>
             <div className="space-y-6 lg:space-y-8">
               {currentTest.questions.map((question, idx) => (
                 <div
                   key={question.id}
-                  className={`border-b-2 pb-6 lg:pb-8 last:border-b-0 animate-fade-in`}
+                  className={`border-b-2 pb-6 lg:pb-8 last:border-b-0`}
                   style={{ animationDelay: `${idx * 0.1}s` }}
                 >
                   <h3 className={`text-lg lg:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>
-                    {language === 'vi' ? 'Câu hỏi' : 'Question'} {question.number}
+                    {language === 'vi' ? 'Câu hỏi' : 'Question'} {idx + 1}
+                    {retakeMode === 'incorrect' && (
+                      <span className={`text-sm ml-2 px-2 py-1 rounded ${theme === 'dark' ? 'bg-orange-900 text-orange-300' : 'bg-orange-100 text-orange-800'}`}>
+                        {language === 'vi' ? 'Câu sai' : 'Incorrect'}
+                      </span>
+                    )}
                   </h3>
 
                   {question.text && (
@@ -1824,11 +2051,18 @@ const VisualTestPlatform = () => {
                   )}
 
                   {question.image && (
-                    <img
-                      src={question.image}
-                      alt={`${language === 'vi' ? 'Câu hỏi' : 'Question'} ${question.number}`}
-                      className="w-full rounded mb-4 border-2 border-gray-200 transition-transform duration-200 hover:scale-[1.02]"
-                    />
+                    <div className="image-zoom-container mb-4">
+                      <img
+                        src={question.image}
+                        alt={`${language === 'vi' ? 'Câu hỏi' : 'Question'} ${question.number}`}
+                        className="rounded border-2 border-gray-200 transition-transform duration-200 hover:scale-[1.02]"
+                        style={{
+                          transform: `scale(${imageZoomLevel})`,
+                          transformOrigin: 'center center',
+                          maxWidth: imageZoomLevel > 1 ? 'none' : '100%',
+                        }}
+                      />
+                    </div>
                   )}
 
                   {question.type === "none" && (
@@ -1853,15 +2087,12 @@ const VisualTestPlatform = () => {
                             <input
                               type="checkbox"
                               checked={(userAnswers[question.id] || []).includes(option.letter)}
-                              onChange={(e) => {
+                            onChange={(e) => {
                                 const current = userAnswers[question.id] || [];
                                 const newAnswers = e.target.checked
                                   ? [...current, option.letter].sort()
                                   : current.filter((a) => a !== option.letter);
-                                setUserAnswers({
-                                  ...userAnswers,
-                                  [question.id]: newAnswers,
-                                });
+                                handleAnswerSelect(question.id, newAnswers);
                               }}
                               className="w-4 h-4 mr-3"
                             />
@@ -1894,10 +2125,7 @@ const VisualTestPlatform = () => {
                               const newAnswers = current.includes(option.letter)
                                 ? current.filter((a) => a !== option.letter)
                                 : [...current, option.letter].sort();
-                              setUserAnswers({
-                                ...userAnswers,
-                                [question.id]: newAnswers,
-                              });
+                              handleAnswerSelect(question.id, newAnswers);
                             }}
                             className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold text-sm lg:text-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 ${
                               (userAnswers[question.id] || []).includes(option.letter)
@@ -1934,10 +2162,7 @@ const VisualTestPlatform = () => {
                               value={option.letter}
                               checked={(userAnswers[question.id] || []).includes(option.letter)}
                               onChange={(e) =>
-                                setUserAnswers({
-                                  ...userAnswers,
-                                  [question.id]: [e.target.value],
-                                })
+                                handleAnswerSelect(question.id, [e.target.value])
                               }
                               className="w-4 h-4 mr-3"
                             />
@@ -1962,7 +2187,7 @@ const VisualTestPlatform = () => {
                         type="text"
                         placeholder={language === 'vi' ? 'Nhập câu trả lời của bạn, phân tách nhiều câu bằng dấu phẩy' : "Enter your answer(s), separate multiple with commas"}
                         value={userAnswers[question.id] || ""}
-                        onChange={(e) => setUserAnswers({...userAnswers, [question.id]: e.target.value})}
+                        onChange={(e) => handleAnswerSelect(question.id, e.target.value)}
                         className={`w-full border-2 rounded p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200 ${theme === 'dark' ? 'border-gray-600 bg-gray-700 text-white' : 'border-gray-300 bg-white text-gray-800'}`}
                       />
                     </div>
@@ -1974,10 +2199,16 @@ const VisualTestPlatform = () => {
             <div className="flex flex-col sm:flex-row gap-4 mt-6 lg:mt-8">
               <button
                 onClick={() => {
+                  // Clear achievement timeout
+                  if (window.achievementTimeout) {
+                    clearTimeout(window.achievementTimeout);
+                  }
+                  
                   if (confirm(t('exitTest'))) {
                     setCurrentTest(null);
                     setCurrentPage("home");
-                    triggerAnimation("home");
+                    setRetakeMode('full');
+                    triggerSimpleAnimation("home");
                   }
                 }}
                 className={`flex-1 font-semibold py-3 px-4 rounded shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'bg-gray-500 hover:bg-gray-600 text-white'}`}
@@ -2005,7 +2236,7 @@ const VisualTestPlatform = () => {
     return (
       <PageWrapper>
         <div className="w-full">
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 text-center mb-6 lg:mb-8 animate-bounce-in`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 text-center mb-6 lg:mb-8`}>
             <h1 className={`text-2xl lg:text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-4`}>
               {t('testResults')}
             </h1>
@@ -2019,12 +2250,23 @@ const VisualTestPlatform = () => {
             </div>
 
             <p
-              className={`text-xl lg:text-2xl font-semibold mb-6 ${
+              className={`text-xl lg:text-2xl font-semibold mb-4 ${
                 isPassed ? "text-green-600" : "text-red-600"
               }`}
             >
               {isPassed ? "✓ " + t('passed') : "✗ " + t('failed')}
             </p>
+
+            {getIncorrectQuestions().length > 0 && (
+              <div className={`mb-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-orange-900 border-orange-700 text-orange-300' : 'bg-orange-100 border-orange-300 text-orange-800'} border-l-4`}>
+                <p className="font-semibold">
+                  {language === 'vi' 
+                    ? `${getIncorrectQuestions().length} câu sai - Bạn có thể làm lại chỉ những câu này!`
+                    : `${getIncorrectQuestions().length} incorrect questions - You can retake just these!`
+                  }
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -2032,7 +2274,9 @@ const VisualTestPlatform = () => {
                   setCurrentPage("home");
                   setCurrentTest(null);
                   setTestResults(null);
-                  triggerAnimation("home");
+                  setIncorrectQuestions([]);
+                  setRetakeMode('full');
+                  triggerSimpleAnimation("home");
                 }}
                 className={`font-semibold py-3 px-6 rounded shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-indigo-700 hover:bg-indigo-600 text-white' : 'bg-indigo-500 hover:bg-indigo-600 text-white'}`}
               >
@@ -2040,19 +2284,37 @@ const VisualTestPlatform = () => {
               </button>
               <button
                 onClick={() => {
+                  // Clear achievement timeout
+                  if (window.achievementTimeout) {
+                    clearTimeout(window.achievementTimeout);
+                  }
+                  
                   setUserAnswers({});
                   setTestResults(null);
+                  setAnsweredQuestions(new Set());
+                  setShowAchievement(false);
                   setCurrentPage("test");
-                  triggerAnimation("test");
+                  triggerSimpleAnimation("test");
                 }}
                 className={`font-semibold py-3 px-6 rounded shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'}`}
               >
                 {t('retakeTest')}
               </button>
+              {getIncorrectQuestions().length > 0 && (
+                <button
+                  onClick={() => {
+                    const incorrect = getIncorrectQuestions();
+                    startTestWithQuestions(currentTest, incorrect, 'incorrect');
+                  }}
+                  className={`font-semibold py-3 px-6 rounded shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 ${theme === 'dark' ? 'bg-orange-700 hover:bg-orange-600 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}
+                >
+                  {t('retakeIncorrect')} ({getIncorrectQuestions().length})
+                </button>
+              )}
             </div>
           </div>
 
-          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8 animate-slide-in-left`}>
+          <div className={`${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-lg p-6 lg:p-8`}>
             <h2 className={`text-xl lg:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-6`}>
               {t('answerReview')}
             </h2>
@@ -2075,7 +2337,7 @@ const VisualTestPlatform = () => {
                 return (
                   <div
                     key={question.id}
-                    className={`border-l-4 pl-4 lg:pl-6 pb-6 lg:pb-8 animate-fade-in`}
+                    className={`border-l-4 pl-4 lg:pl-6 pb-6 lg:pb-8`}
                     style={{ animationDelay: `${idx * 0.1}s` }}
                   >
                     <h3 className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-800'} mb-3 text-base lg:text-lg`}>

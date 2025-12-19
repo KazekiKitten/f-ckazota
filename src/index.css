@@ -472,3 +472,214 @@ textarea:focus-visible {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Xbox-style Achievement Animations - Subtle Version */
+@keyframes achievementPopup {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes neonGlow {
+  0%, 100% {
+    box-shadow: 
+      0 0 5px rgba(59, 130, 246, 0.3),
+      0 0 10px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 10px rgba(59, 130, 246, 0.4),
+      0 0 20px rgba(59, 130, 246, 0.3);
+  }
+}
+
+@keyframes progressBar {
+  0% {
+    width: 0%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+    background-size: 200% 100%;
+    animation: gradientShift 1.5s ease infinite;
+  }
+  100% {
+    width: var(--progress-width);
+    background: linear-gradient(90deg, #06b6d4, #10b981, #3b82f6);
+    background-size: 200% 100%;
+    animation: gradientShift 1.5s ease infinite reverse;
+  }
+}
+
+@keyframes achievementText {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes achievementExit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+}
+
+/* Achievement component styles - More subtle */
+.achievement-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 320px;
+  animation: achievementPopup 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.achievement-exit {
+  animation: achievementExit 0.4s ease-in forwards;
+}
+
+.achievement-content {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.95) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    0 0 15px rgba(59, 130, 246, 0.1);
+  animation: neonGlow 3s ease-in-out infinite;
+  backdrop-filter: blur(10px);
+}
+
+.achievement-title {
+  color: #60a5fa;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  animation: achievementText 0.8s ease-out 0.2s both;
+  margin-bottom: 8px;
+}
+
+.achievement-subtitle {
+  color: #e2e8f0;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.9;
+  animation: achievementText 0.8s ease-out 0.4s both;
+  margin-bottom: 12px;
+}
+
+.achievement-progress {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 6px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.achievement-progress-bar {
+  height: 100%;
+  border-radius: 6px;
+  animation: progressBar 1.5s ease-out forwards;
+}
+
+.achievement-counter {
+  color: #60a5fa;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  animation: achievementText 0.8s ease-out 0.6s both;
+}
+
+/* Progress indicator in header - More subtle */
+.progress-indicator {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(51, 65, 85, 0.9) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #60a5fa;
+  font-weight: 500;
+  font-size: 14px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.5s ease-out;
+}
+
+.progress-counter {
+  color: #e2e8f0;
+  font-size: 13px;
+  margin-top: 4px;
+  text-align: center;
+  opacity: 0.9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .achievement-popup {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    min-width: auto;
+    max-width: none;
+  }
+  
+  .progress-indicator {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    text-align: center;
+  }
+}
+
+/* Image zoom controls styles */
+.image-zoom-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.image-zoom-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.image-zoom-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.image-zoom-container::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 3px;
+}
+
+.image-zoom-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.5);
+}
+
+.dark .image-zoom-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .image-zoom-container::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.3);
+}
+
+.dark .image-zoom-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.5);
+}
