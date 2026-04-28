@@ -1,5 +1,22 @@
 @import "tailwindcss";
+/* Smooth theme switching */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 350ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
 
+/* But keep transform/opacity transitions snappy for interactions */
+button,
+a,
+[role="button"] {
+  transition-property:
+    background-color, border-color, color, fill, stroke, opacity, transform,
+    box-shadow;
+  transition-duration: 150ms;
+}
 /* Root styles */
 #root {
   width: 100%;

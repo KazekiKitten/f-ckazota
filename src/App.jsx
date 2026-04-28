@@ -256,36 +256,36 @@ const translations = {
     lightTheme: "Light Theme",
     darkTheme: "Dark Theme",
 
-     // AI Mode
-     aiMode: "AI Mode",
-     aiModeDesc: "Use AI to automatically extract and answer questions",
-     aiExtract: "AI Extraction",
-     aiExtractDesc: "Smart extraction using Gemini AI",
-     enterGeminiKey: "Enter Gemini API Key",
-     geminiKeyPlaceholder: "Your Gemini API Key (starts with AI...)",
-     saveApiKey: "Save API Key",
-     apiKeySaved: "API Key saved!",
-     apiKeyMissing: "Please enter your Gemini API key first",
-     aiProcessing: "AI is analyzing your document...",
-     aiProcessingPage: "Processing page",
-     detectingQuestions: "Detecting question regions...",
-     aiError: "AI Error",
-     noApiKey: "No API Key",
-     pagesProcessed: "pages processed",
+    // AI Mode
+    aiMode: "AI Mode",
+    aiModeDesc: "Use AI to automatically extract and answer questions",
+    aiExtract: "AI Extraction",
+    aiExtractDesc: "Smart extraction using Gemini AI",
+    enterGeminiKey: "Enter Gemini API Key",
+    geminiKeyPlaceholder: "Your Gemini API Key (starts with AI...)",
+    saveApiKey: "Save API Key",
+    apiKeySaved: "API Key saved!",
+    apiKeyMissing: "Please enter your Gemini API key first",
+    aiProcessing: "AI is analyzing your document...",
+    aiProcessingPage: "Processing page",
+    detectingQuestions: "Detecting question regions...",
+    aiError: "AI Error",
+    noApiKey: "No API Key",
+    pagesProcessed: "pages processed",
 
-     // Test Settings
-     testSettings: "Test Settings",
-     immediateFeedback: "Immediate Feedback",
-     immediateFeedbackDesc: "Show correct answer immediately after selection",
-     scrambleOptions: "Scramble Options",
-     scrambleOptionsDesc: "Randomize A, B, C, D order",
+    // Test Settings
+    testSettings: "Test Settings",
+    immediateFeedback: "Immediate Feedback",
+    immediateFeedbackDesc: "Show correct answer immediately after selection",
+    scrambleOptions: "Scramble Options",
+    scrambleOptionsDesc: "Randomize A, B, C, D order",
 
-     // Test Settings
-     testSettings: "Cài đặt bài kiểm tra",
-     immediateFeedback: "Phản hồi ngay lập tức",
-     immediateFeedbackDesc: "Hiển thị ngay đáp án đúng sau khi chọn",
-     scrambleOptions: "Xáo trộn đáp án",
-     scrambleOptionsDesc: "Ngẫu nhiên thứ tự A, B, C, D",
+    // Test Settings
+    testSettings: "Cài đặt bài kiểm tra",
+    immediateFeedback: "Phản hồi ngay lập tức",
+    immediateFeedbackDesc: "Hiển thị ngay đáp án đúng sau khi chọn",
+    scrambleOptions: "Xáo trộn đáp án",
+    scrambleOptionsDesc: "Ngẫu nhiên thứ tự A, B, C, D",
   },
 };
 
@@ -1291,9 +1291,11 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     // Handle scrambled options if enabled
     let processedQuestions = questions;
     if (test.settings?.scrambleOptions) {
-      processedQuestions = questions.map(q => {
+      processedQuestions = questions.map((q) => {
         if (q.type === "multiple_choice" || q.type === "true_false") {
-          const shuffledOptions = [...q.options].sort(() => Math.random() - 0.5);
+          const shuffledOptions = [...q.options].sort(
+            () => Math.random() - 0.5,
+          );
           const optionMapping = {};
           shuffledOptions.forEach((opt, idx) => {
             optionMapping[opt.letter] = q.options[idx].letter;
@@ -1302,8 +1304,10 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
             ...q,
             shuffledOptions,
             optionMapping,
-            correctAnswer: q.correctAnswer.map(ans => {
-              const originalIndex = q.options.findIndex(opt => opt.letter === ans);
+            correctAnswer: q.correctAnswer.map((ans) => {
+              const originalIndex = q.options.findIndex(
+                (opt) => opt.letter === ans,
+              );
               return shuffledOptions[originalIndex].letter;
             }),
           };
@@ -2260,48 +2264,87 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                 id: "pdf-input",
                 label: t("uploadPdf"),
                 desc: t("uploadPdfDesc"),
-                icon: <FileText />,
+                icon: <FileText className="w-5 h-5" />,
                 handler: handlePdfUpload,
                 accept: ".pdf",
+                color: "red",
+                accent:
+                  theme === "dark"
+                    ? "bg-red-500/10 text-red-400 group-hover:bg-red-500/20"
+                    : "bg-red-50 text-red-600 group-hover:bg-red-100",
+                border: "group-hover:border-red-500/50",
+                tag: "PDF",
               },
               {
                 id: "image-input",
                 label: t("uploadImages"),
                 desc: t("uploadImagesDesc"),
-                icon: <Image />,
+                icon: <Image className="w-5 h-5" />,
                 handler: handleImageUpload,
                 accept: "image/*",
                 multi: true,
+                color: "violet",
+                accent:
+                  theme === "dark"
+                    ? "bg-violet-500/10 text-violet-400 group-hover:bg-violet-500/20"
+                    : "bg-violet-50 text-violet-600 group-hover:bg-violet-100",
+                border: "group-hover:border-violet-500/50",
+                tag: "IMG",
               },
               {
                 id: "test-input",
                 label: t("importTest"),
                 desc: t("importTestDesc"),
-                icon: <Upload />,
+                icon: <Upload className="w-5 h-5" />,
                 handler: handleTestUpload,
                 accept: ".json",
+                color: "green",
+                accent:
+                  theme === "dark"
+                    ? "bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20"
+                    : "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100",
+                border: "group-hover:border-emerald-500/50",
+                tag: "JSON",
               },
               {
                 id: "text-input",
                 label: t("uploadText"),
                 desc: t("uploadTextDesc"),
-                icon: <FileText />,
+                icon: <FileText className="w-5 h-5" />,
                 handler: handleTextUpload,
                 accept: ".txt",
+                color: "amber",
+                accent:
+                  theme === "dark"
+                    ? "bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20"
+                    : "bg-amber-50 text-amber-600 group-hover:bg-amber-100",
+                border: "group-hover:border-amber-500/50",
+                tag: "TXT",
               },
               {
                 id: "docx-input",
                 label: t("uploadDocx"),
                 desc: t("uploadDocxDesc"),
-                icon: <FileText />,
+                icon: <FileText className="w-5 h-5" />,
                 handler: handleDocxUpload,
                 accept: ".docx",
+                color: "blue",
+                accent:
+                  theme === "dark"
+                    ? "bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20"
+                    : "bg-blue-50 text-blue-600 group-hover:bg-blue-100",
+                border: "group-hover:border-blue-500/50",
+                tag: "DOCX",
               },
             ].map((item) => (
               <label
                 key={item.id}
                 htmlFor={item.id}
-                className={`group relative cursor-pointer flex flex-col items-center p-6 text-center border-2 border-dashed rounded-2xl transition-all duration-200 ${theme === "dark" ? "border-gray-700 bg-gray-800 hover:border-red-500 hover:bg-gray-800/80" : "border-gray-200 bg-white hover:border-red-500 hover:shadow-md"}`}
+                className={`group relative cursor-pointer flex flex-col gap-3 p-5 border-2 border-dashed rounded-2xl transition-all duration-200 ${
+                  theme === "dark"
+                    ? `border-gray-700 bg-gray-800/40 hover:bg-gray-800 ${item.border}`
+                    : `border-gray-200 bg-white hover:shadow-md ${item.border}`
+                }`}
               >
                 <input
                   type="file"
@@ -2312,19 +2355,49 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                   className="hidden"
                   disabled={isProcessing}
                 />
-                <div
-                  className={`p-3 rounded-full mb-3 transition-colors ${theme === "dark" ? "bg-gray-700 text-gray-400 group-hover:bg-red-500/20 group-hover:text-red-400" : "bg-slate-50 text-gray-400 group-hover:bg-red-50 group-hover:text-red-600"}`}
-                >
-                  {React.cloneElement(item.icon, { className: "w-6 h-6" })}
+                {/* Top row: icon + tag badge */}
+                <div className="flex items-center justify-between">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${item.accent}`}
+                  >
+                    {item.icon}
+                  </div>
+                  <span
+                    className={`text-[10px] font-black tracking-widest px-2 py-0.5 rounded-md border ${
+                      theme === "dark"
+                        ? "border-gray-700 text-gray-500 bg-gray-900"
+                        : "border-gray-100 text-gray-400 bg-slate-50"
+                    }`}
+                  >
+                    {item.tag}
+                  </span>
                 </div>
-                <h3
-                  className={`font-bold mb-1 ${theme === "dark" ? "text-gray-200 group-hover:text-white" : "text-gray-900 group-hover:text-red-700"}`}
+                {/* Label + desc */}
+                <div>
+                  <h3
+                    className={`font-bold text-sm leading-tight mb-0.5 ${
+                      theme === "dark" ? "text-gray-100" : "text-gray-900"
+                    }`}
+                  >
+                    {item.label}
+                  </h3>
+                  <p
+                    className={`text-xs leading-relaxed ${
+                      theme === "dark" ? "text-gray-500" : "text-gray-400"
+                    }`}
+                  >
+                    {item.desc}
+                  </p>
+                </div>
+                {/* Bottom drag hint */}
+                <div
+                  className={`flex items-center gap-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
+                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                  }`}
                 >
-                  {item.label}
-                </h3>
-                <p className="text-xs opacity-70 leading-relaxed">
-                  {item.desc}
-                </p>
+                  <ChevronRight className="w-3 h-3" />
+                  {language === "vi" ? "Nhấn để chọn" : "Click to select"}
+                </div>
               </label>
             ))}
           </div>
@@ -2501,17 +2574,21 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
 
         {/* Test Settings */}
         <Card className="p-6 mb-8">
-          <h2 className={`text-xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+          <h2
+            className={`text-xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+          >
             {t("testSettings")}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-              editingTest.settings?.immediateFeedback
-                ? "border-red-500 bg-red-50 dark:bg-red-500/10"
-                : theme === "dark"
-                  ? "border-gray-700 hover:border-gray-500"
-                  : "border-gray-200 bg-slate-50 hover:border-gray-300"
-            }`}>
+            <label
+              className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                editingTest.settings?.immediateFeedback
+                  ? "border-red-500 bg-red-50 dark:bg-red-500/10"
+                  : theme === "dark"
+                    ? "border-gray-700 hover:border-gray-500"
+                    : "border-gray-200 bg-slate-50 hover:border-gray-300"
+              }`}
+            >
               <input
                 type="checkbox"
                 className="hidden"
@@ -2526,32 +2603,40 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                   });
                 }}
               />
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                editingTest.settings?.immediateFeedback
-                  ? "bg-red-500 border-red-500"
-                  : theme === "dark"
-                    ? "border-gray-500"
-                    : "border-gray-300"
-              }`}>
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                  editingTest.settings?.immediateFeedback
+                    ? "bg-red-500 border-red-500"
+                    : theme === "dark"
+                      ? "border-gray-500"
+                      : "border-gray-300"
+                }`}
+              >
                 {editingTest.settings?.immediateFeedback && (
                   <Check className="w-3 h-3 text-white" />
                 )}
               </div>
               <div>
-                <h3 className={`font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                <h3
+                  className={`font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                >
                   {t("immediateFeedback")}
                 </h3>
-                <p className="text-sm opacity-70">{t("immediateFeedbackDesc")}</p>
+                <p className="text-sm opacity-70">
+                  {t("immediateFeedbackDesc")}
+                </p>
               </div>
             </label>
 
-            <label className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-              editingTest.settings?.scrambleOptions
-                ? "border-red-500 bg-red-50 dark:bg-red-500/10"
-                : theme === "dark"
-                  ? "border-gray-700 hover:border-gray-500"
-                  : "border-gray-200 bg-slate-50 hover:border-gray-300"
-            }`}>
+            <label
+              className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                editingTest.settings?.scrambleOptions
+                  ? "border-red-500 bg-red-50 dark:bg-red-500/10"
+                  : theme === "dark"
+                    ? "border-gray-700 hover:border-gray-500"
+                    : "border-gray-200 bg-slate-50 hover:border-gray-300"
+              }`}
+            >
               <input
                 type="checkbox"
                 className="hidden"
@@ -2566,19 +2651,23 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                   });
                 }}
               />
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                editingTest.settings?.scrambleOptions
-                  ? "bg-red-500 border-red-500"
-                  : theme === "dark"
-                    ? "border-gray-500"
-                    : "border-gray-300"
-              }`}>
+              <div
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                  editingTest.settings?.scrambleOptions
+                    ? "bg-red-500 border-red-500"
+                    : theme === "dark"
+                      ? "border-gray-500"
+                      : "border-gray-300"
+                }`}
+              >
                 {editingTest.settings?.scrambleOptions && (
                   <Check className="w-3 h-3 text-white" />
                 )}
               </div>
               <div>
-                <h3 className={`font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                <h3
+                  className={`font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                >
                   {t("scrambleOptions")}
                 </h3>
                 <p className="text-sm opacity-70">{t("scrambleOptionsDesc")}</p>
@@ -2936,131 +3025,145 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                 <div className="mt-6">
                   {question.type === "multiple_choice" && (
                     <div className="flex flex-col gap-2 mt-4">
-                      {(question.shuffledOptions || question.options).map((option) => {
-                        const isSelected = (
-                          userAnswers[question.id] || []
-                        ).includes(option.letter);
-                        const isCorrect = question.correctAnswer.includes(option.letter);
-                        const showFeedback = currentTest.settings?.immediateFeedback && isSelected;
+                      {(question.shuffledOptions || question.options).map(
+                        (option) => {
+                          const isSelected = (
+                            userAnswers[question.id] || []
+                          ).includes(option.letter);
+                          const isCorrect = question.correctAnswer.includes(
+                            option.letter,
+                          );
+                          const showFeedback =
+                            currentTest.settings?.immediateFeedback &&
+                            isSelected;
 
-                        return (
-                          <button
-                            key={option.letter}
-                            onClick={() => {
-                              if (!currentTest.settings?.immediateFeedback) {
-                                const curr = userAnswers[question.id] || [];
-                                handleAnswerSelect(
-                                  question.id,
-                                  isSelected
-                                    ? curr.filter((a) => a !== option.letter)
-                                    : [...curr, option.letter].sort(),
-                                );
-                              } else {
-                                // Immediate feedback mode - single selection
-                                handleAnswerSelect(question.id, [option.letter]);
-                              }
-                            }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all active:scale-[0.99] ${
-                              showFeedback
-                                ? isCorrect
-                                  ? "border-green-500 bg-green-50 dark:bg-green-500/10"
-                                  : "border-red-500 bg-red-50 dark:bg-red-500/10"
-                                : isSelected
-                                  ? "border-red-500 bg-red-50 dark:bg-red-500/10"
-                                  : theme === "dark"
-                                    ? "border-gray-700 bg-gray-800 hover:border-gray-600"
-                                    : "border-gray-200 bg-slate-50 hover:border-gray-300 hover:bg-white"
-                            }`}
-                          >
-                            <span
-                              className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-sm font-bold transition-colors ${
+                          return (
+                            <button
+                              key={option.letter}
+                              onClick={() => {
+                                if (!currentTest.settings?.immediateFeedback) {
+                                  const curr = userAnswers[question.id] || [];
+                                  handleAnswerSelect(
+                                    question.id,
+                                    isSelected
+                                      ? curr.filter((a) => a !== option.letter)
+                                      : [...curr, option.letter].sort(),
+                                  );
+                                } else {
+                                  // Immediate feedback mode - single selection
+                                  handleAnswerSelect(question.id, [
+                                    option.letter,
+                                  ]);
+                                }
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all active:scale-[0.99] ${
                                 showFeedback
                                   ? isCorrect
-                                    ? "bg-green-500 text-white"
-                                    : "bg-red-500 text-white"
+                                    ? "border-green-500 bg-green-50 dark:bg-green-500/10"
+                                    : "border-red-500 bg-red-50 dark:bg-red-500/10"
                                   : isSelected
-                                    ? "bg-red-500 text-white"
+                                    ? "border-red-500 bg-red-50 dark:bg-red-500/10"
                                     : theme === "dark"
-                                      ? "bg-gray-700 text-gray-300"
-                                      : "bg-white border border-gray-200 text-gray-600"
+                                      ? "border-gray-700 bg-gray-800 hover:border-gray-600"
+                                      : "border-gray-200 bg-slate-50 hover:border-gray-300 hover:bg-white"
                               }`}
                             >
-                              {option.letter}
-                            </span>
-                            <span
-                              className={`text-sm leading-snug ${
-                                showFeedback
-                                  ? isCorrect
-                                    ? "text-green-700 dark:text-green-400 font-medium"
-                                    : "text-red-700 dark:text-red-400 font-medium"
-                                  : isSelected
-                                    ? "text-red-700 dark:text-red-400 font-medium"
-                                    : theme === "dark"
-                                      ? "text-gray-200"
-                                      : "text-gray-700"
-                              }`}
-                            >
-                              {option.text || option.letter}
-                            </span>
-                            {showFeedback && (
-                              <div className="ml-auto flex-shrink-0">
-                                {isCorrect ? (
-                                  <Check className="w-5 h-5 text-green-500" />
-                                ) : (
-                                  <X className="w-5 h-5 text-red-500" />
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
+                              <span
+                                className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-sm font-bold transition-colors ${
+                                  showFeedback
+                                    ? isCorrect
+                                      ? "bg-green-500 text-white"
+                                      : "bg-red-500 text-white"
+                                    : isSelected
+                                      ? "bg-red-500 text-white"
+                                      : theme === "dark"
+                                        ? "bg-gray-700 text-gray-300"
+                                        : "bg-white border border-gray-200 text-gray-600"
+                                }`}
+                              >
+                                {option.letter}
+                              </span>
+                              <span
+                                className={`text-sm leading-snug ${
+                                  showFeedback
+                                    ? isCorrect
+                                      ? "text-green-700 dark:text-green-400 font-medium"
+                                      : "text-red-700 dark:text-red-400 font-medium"
+                                    : isSelected
+                                      ? "text-red-700 dark:text-red-400 font-medium"
+                                      : theme === "dark"
+                                        ? "text-gray-200"
+                                        : "text-gray-700"
+                                }`}
+                              >
+                                {option.text || option.letter}
+                              </span>
+                              {showFeedback && (
+                                <div className="ml-auto flex-shrink-0">
+                                  {isCorrect ? (
+                                    <Check className="w-5 h-5 text-green-500" />
+                                  ) : (
+                                    <X className="w-5 h-5 text-red-500" />
+                                  )}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
                   )}
                   {question.type === "true_false" && (
                     <div className="grid grid-cols-2 gap-3">
-                      {(question.shuffledOptions || question.options).map((option) => {
-                        const isSelected = (
-                          userAnswers[question.id] || []
-                        ).includes(option.letter);
-                        const isCorrect = question.correctAnswer.includes(option.letter);
-                        const showFeedback = currentTest.settings?.immediateFeedback && isSelected;
+                      {(question.shuffledOptions || question.options).map(
+                        (option) => {
+                          const isSelected = (
+                            userAnswers[question.id] || []
+                          ).includes(option.letter);
+                          const isCorrect = question.correctAnswer.includes(
+                            option.letter,
+                          );
+                          const showFeedback =
+                            currentTest.settings?.immediateFeedback &&
+                            isSelected;
 
-                        return (
-                          <button
-                            key={option.letter}
-                            onClick={() =>
-                              handleAnswerSelect(question.id, [option.letter])
-                            }
-                            className={`py-4 px-3 rounded-xl font-bold text-lg border-2 transition-all active:scale-95 ${
-                              showFeedback
-                                ? isCorrect
-                                  ? "border-green-500 bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
-                                  : "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-                                : isSelected
-                                  ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
-                                  : theme === "dark"
-                                    ? "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500"
-                                    : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
-                            }`}
-                          >
-                            <span className="block">{option.letter}</span>
-                            {option.text && (
-                              <span className="block text-sm font-normal mt-1 opacity-90 break-words">
-                                {option.text}
-                              </span>
-                            )}
-                            {showFeedback && (
-                              <div className="mt-2">
-                                {isCorrect ? (
-                                  <Check className="w-5 h-5 text-green-500 mx-auto" />
-                                ) : (
-                                  <X className="w-5 h-5 text-red-500 mx-auto" />
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={option.letter}
+                              onClick={() =>
+                                handleAnswerSelect(question.id, [option.letter])
+                              }
+                              className={`py-4 px-3 rounded-xl font-bold text-lg border-2 transition-all active:scale-95 ${
+                                showFeedback
+                                  ? isCorrect
+                                    ? "border-green-500 bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
+                                    : "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                                  : isSelected
+                                    ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                                    : theme === "dark"
+                                      ? "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500"
+                                      : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
+                              }`}
+                            >
+                              <span className="block">{option.letter}</span>
+                              {option.text && (
+                                <span className="block text-sm font-normal mt-1 opacity-90 break-words">
+                                  {option.text}
+                                </span>
+                              )}
+                              {showFeedback && (
+                                <div className="mt-2">
+                                  {isCorrect ? (
+                                    <Check className="w-5 h-5 text-green-500 mx-auto" />
+                                  ) : (
+                                    <X className="w-5 h-5 text-red-500 mx-auto" />
+                                  )}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
                   )}
 
@@ -3175,7 +3278,9 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <div className={`px-3 py-1 rounded-lg font-bold text-sm ${theme === "dark" ? "bg-gray-800 text-orange-400" : "bg-orange-50 text-orange-600"}`}>
+              <div
+                className={`px-3 py-1 rounded-lg font-bold text-sm ${theme === "dark" ? "bg-gray-800 text-orange-400" : "bg-orange-50 text-orange-600"}`}
+              >
                 {t("rapidScore")}: {rapidScore}/{rapidTotalQuestions}
               </div>
               <Button
@@ -3205,9 +3310,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                   className="w-full rounded-lg mb-6 border border-gray-200 dark:border-gray-700"
                 />
               )}
-              {question.text && (
-                <p className="text-lg mb-6">{question.text}</p>
-              )}
+              {question.text && <p className="text-lg mb-6">{question.text}</p>}
 
               <div className="space-y-4">
                 {question.type === "multiple_choice" && (
@@ -3291,11 +3394,17 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
             </Card>
           ) : (
             <Card className="p-8 text-center">
-              <div className={`text-6xl mb-6 ${checkRapidAnswer(question, rapidAnswer) ? "text-green-500" : "text-red-500"}`}>
+              <div
+                className={`text-6xl mb-6 ${checkRapidAnswer(question, rapidAnswer) ? "text-green-500" : "text-red-500"}`}
+              >
                 {checkRapidAnswer(question, rapidAnswer) ? "✅" : "❌"}
               </div>
               <h2 className="text-2xl font-bold mb-4">
-                {checkRapidAnswer(question, rapidAnswer) ? t("correctAnswerRapid") : t("incorrectAnswerRapid") + " " + question.correctAnswer.join(", ")}
+                {checkRapidAnswer(question, rapidAnswer)
+                  ? t("correctAnswerRapid")
+                  : t("incorrectAnswerRapid") +
+                    " " +
+                    question.correctAnswer.join(", ")}
               </h2>
               <Button
                 onClick={() => {
@@ -3314,7 +3423,10 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   }
 
   if (currentPage === "rapid-results") {
-    const percentage = rapidTotalQuestions > 0 ? Math.round((rapidScore / rapidTotalQuestions) * 100) : 0;
+    const percentage =
+      rapidTotalQuestions > 0
+        ? Math.round((rapidScore / rapidTotalQuestions) * 100)
+        : 0;
     return (
       <PageWrapper>
         <Card className="max-w-2xl mx-auto p-8 lg:p-12 text-center">
@@ -3336,9 +3448,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
             >
               {t("restartRapid")}
             </Button>
-            <Button onClick={() => exitRapidTest()}>
-              {t("home")}
-            </Button>
+            <Button onClick={() => exitRapidTest()}>{t("home")}</Button>
           </div>
         </Card>
       </PageWrapper>
