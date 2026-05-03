@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Upload,
   Plus,
@@ -273,19 +273,16 @@ const translations = {
     noApiKey: "No API Key",
     pagesProcessed: "pages processed",
 
+    // Share and Import
+    shareTest: "Chia sẻ Bài kiểm tra",
+    importByCode: "Nhập bằng Mã",
+
     // Test Settings
     testSettings: "Test Settings",
     immediateFeedback: "Immediate Feedback",
     immediateFeedbackDesc: "Show correct answer immediately after selection",
     scrambleOptions: "Scramble Options",
     scrambleOptionsDesc: "Randomize A, B, C, D order",
-
-    // Test Settings
-    testSettings: "Cài đặt bài kiểm tra",
-    immediateFeedback: "Phản hồi ngay lập tức",
-    immediateFeedbackDesc: "Hiển thị ngay đáp án đúng sau khi chọn",
-    scrambleOptions: "Xáo trộn đáp án",
-    scrambleOptionsDesc: "Ngẫu nhiên thứ tự A, B, C, D",
 
     // True/False button labels
     trueLabel: "True",
@@ -359,6 +356,324 @@ const ThemeProvider = ({ children }) => {
   );
 };
 
+const Card = ({ children, className = "" }) => {
+  const { theme } = React.useContext(ThemeContext);
+  return (
+    <div
+      className={`${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100 shadow-sm"} border rounded-2xl overflow-hidden transition-colors duration-300 ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+const Button = ({
+  children,
+  onClick,
+  variant = "primary",
+  className = "",
+  disabled = false,
+  icon = null,
+}) => {
+  const { theme } = React.useContext(ThemeContext);
+  const base =
+    "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+  const variants = {
+    primary: `bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow active:scale-95`,
+    secondary:
+      theme === "dark"
+        ? `bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white`
+        : `bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm`,
+    dangerOutline:
+      theme === "dark"
+        ? `border border-red-500/50 text-red-400 hover:bg-red-500/10`
+        : `border border-red-200 text-red-600 hover:bg-red-50`,
+    ghost:
+      theme === "dark"
+        ? `hover:bg-gray-800 text-gray-400 hover:text-white`
+        : `hover:bg-gray-100 text-gray-500 hover:text-gray-900`,
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${base} ${variants[variant]} ${className}`}
+    >
+      {icon} {children}
+    </button>
+  );
+};
+
+const Header = ({
+  showApiKeyInput,
+  setShowApiKeyInput,
+  geminiApiKey,
+  setGeminiApiKey,
+  soundEnabled,
+  toggleSound,
+  setCurrentPage,
+}) => {
+  const { theme, toggleTheme } = React.useContext(ThemeContext);
+  const { language, t, toggleLanguage } = React.useContext(LanguageContext);
+
+  const saveGeminiApiKey = () => {
+    if (geminiApiKey.trim()) {
+      localStorage.setItem("azota-gemini-api-key", geminiApiKey.trim());
+      alert(t("apiKeySaved"));
+      setShowApiKeyInput(false);
+    }
+  };
+
+  return (
+    <div
+      className={`sticky top-0 z-50 transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => setCurrentPage("home")}
+        >
+          <Zap
+            className={`w-6 h-6 ${theme === "dark" ? "text-red-500" : "text-red-600"}`}
+            fill="currentColor"
+          />
+          <h1
+            className={`text-xl lg:text-2xl font-black tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+          >
+            F*ck
+            <span
+              className={theme === "dark" ? "text-red-500" : "text-red-600"}
+            >
+              Azota
+            </span>
+          </h1>
+        </div>
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-xl transition-all ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
+          >
+            {theme === "light" ? (
+              <Moon className="w-5 h-5" />
+            ) : (
+              <Sun className="w-5 h-5" />
+            )}
+          </button>
+          <button
+            onClick={toggleLanguage}
+            className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-600 hover:text-gray-900"}`}
+          >
+            <Globe className="w-5 h-5" />{" "}
+            <span className="hidden sm:block">{language.toUpperCase()}</span>
+          </button>
+          <button
+            onClick={toggleSound}
+            className={`p-2 rounded-xl transition-all ${soundEnabled ? (theme === "dark" ? "text-red-400 bg-red-900/20" : "text-red-600 bg-red-50") : theme === "dark" ? "text-gray-500 bg-gray-800" : "text-gray-400 bg-slate-50"}`}
+          >
+            {soundEnabled ? "🔊" : "🔇"}
+          </button>
+          <button
+            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+            className={`p-2 rounded-xl transition-all ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
+          >
+            <Brain className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PageWrapper = ({
+  children,
+  showApiKeyInput,
+  setShowApiKeyInput,
+  geminiApiKey,
+  setGeminiApiKey,
+  soundEnabled,
+  toggleSound,
+  setCurrentPage,
+  shareCode,
+  showShareModal,
+  setShowShareModal,
+  showImportModal,
+  setShowImportModal,
+  importCode,
+  setImportCode,
+  importByCode,
+}) => {
+  const { theme } = React.useContext(ThemeContext);
+  const { t } = React.useContext(LanguageContext);
+
+  const saveGeminiApiKey = () => {
+    if (geminiApiKey.trim()) {
+      localStorage.setItem("azota-gemini-api-key", geminiApiKey.trim());
+      alert(t("apiKeySaved"));
+      setShowApiKeyInput(false);
+    }
+  };
+
+  return (
+    <div
+      className={`min-h-screen ${theme === "dark" ? "bg-[#0f1115] text-gray-300" : "bg-slate-50 text-gray-600"} transition-colors duration-300 font-sans`}
+    >
+      <Header
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
+      />
+      {showApiKeyInput && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="max-w-md w-full mx-4 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3
+                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+              >
+                {t("enterGeminiKey")}
+              </h3>
+              <button
+                onClick={() => setShowApiKeyInput(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <input
+              type="password"
+              value={geminiApiKey}
+              onChange={(e) => setGeminiApiKey(e.target.value)}
+              placeholder={t("geminiKeyPlaceholder")}
+              className={`w-full p-3 rounded-lg border mb-4 ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowApiKeyInput(false)}
+                className="flex-1"
+              >
+                {t("cancel")}
+              </Button>
+              <Button onClick={saveGeminiApiKey} className="flex-1">
+                {t("saveApiKey")}
+              </Button>
+            </div>
+            {geminiApiKey && (
+              <p className="text-xs mt-3 text-green-500 flex items-center gap-1">
+                <Check className="w-3 h-3" /> {t("apiKeySaved")}
+              </p>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="max-w-md w-full mx-4 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3
+                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+              >
+                {t("shareTest")}
+              </h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="text-center mb-4">
+              <div
+                className={`text-4xl font-mono font-black tracking-widest mb-2 ${theme === "dark" ? "text-red-400" : "text-red-600"}`}
+              >
+                {shareCode}
+              </div>
+              <p className="text-sm opacity-70 mb-4">
+                Share this code with others on the same device. Image-based
+                questions won't transfer.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  navigator.clipboard.writeText(shareCode);
+                  alert("Code copied to clipboard!");
+                }}
+                className="flex-1"
+              >
+                Copy
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowShareModal(false)}
+                className="flex-1"
+              >
+                Done
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="max-w-md w-full mx-4 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3
+                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+              >
+                {t("importByCode")}
+              </h3>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="text-center mb-4">
+              <input
+                type="text"
+                value={importCode}
+                onChange={(e) => setImportCode(e.target.value.toUpperCase())}
+                maxLength={6}
+                placeholder="Enter 6-char code"
+                className={`w-full text-center text-2xl font-mono font-bold tracking-widest p-4 rounded-lg border ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => setShowImportModal(false)}
+                className="flex-1"
+              >
+                {t("cancel")}
+              </Button>
+              <Button
+                onClick={importByCode}
+                disabled={importCode.length !== 6}
+                className="flex-1"
+              >
+                Import
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 animate-in fade-in duration-300">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+// ── Then inside VisualTestPlatform, DELETE the two const Card/Button definitions ──
+
 const VisualTestPlatform = () => {
   const [currentPage, setCurrentPage] = useState("home");
   const [tests, setTests] = useState([]);
@@ -412,6 +727,11 @@ const VisualTestPlatform = () => {
     total: 0,
     status: "",
   });
+
+  const [shareCode, setShareCode] = useState("");
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importCode, setImportCode] = useState("");
 
   useEffect(() => {
     const savedKey = localStorage.getItem("azota-gemini-api-key");
@@ -823,22 +1143,36 @@ const VisualTestPlatform = () => {
 
   const isTrueFalseQuestion = (q) => {
     const text = (q.text || "").toLowerCase();
-    const hasTrueFalseKeywords = /true\s*\/\s*false|true\s*or\s*false|đúng\s*\/\s*sai|đúng\s*hay\s*sai|true-false|đúng-sai|đúng\s*-\s*sai|đúng\s*,\s*sai/i.test(text);
+    const hasTrueFalseKeywords =
+      /true\s*\/\s*false|true\s*or\s*false|đúng\s*\/\s*sai|đúng\s*hay\s*sai|true-false|đúng-sai|đúng\s*-\s*sai|đúng\s*,\s*sai/i.test(
+        text,
+      );
     const hasTwoOptions = (q.options || []).length === 2;
-    const optionsAreTF = hasTwoOptions && 
-      ((q.options[0].letter === 'T' && q.options[1].letter === 'F') ||
-       (q.options[0].letter === 'Đ' && q.options[1].letter === 'S') ||
-       (q.options[0].letter === 'D' && q.options[1].letter === 'S'));
-    
+    const optionsAreTF =
+      hasTwoOptions &&
+      ((q.options[0].letter === "T" && q.options[1].letter === "F") ||
+        (q.options[0].letter === "Đ" && q.options[1].letter === "S") ||
+        (q.options[0].letter === "D" && q.options[1].letter === "S"));
+
     // Check if options contain true/false indicators (format: "statement (true/false)")
-    const optionsHaveTFIndicators = (q.options || []).some(opt => 
-      /\(true\s*\/\s*false\)|\(true\s*or\s*false\)|\(đúng\s*\/\s*sai\)|\(đúng\s*hay\s*sai\)|answer:\s*(true|false|đúng|sai)/i.test(opt.text || "")
+    const optionsHaveTFIndicators = (q.options || []).some((opt) =>
+      /\(true\s*\/\s*false\)|\(true\s*or\s*false\)|\(đúng\s*\/\s*sai\)|\(đúng\s*hay\s*sai\)|answer:\s*(true|false|đúng|sai)/i.test(
+        opt.text || "",
+      ),
     );
-    
+
     // Check if question asks about true/false statements
-    const asksAboutTrueFalse = /which\s+(of\s+the\s+)?following\s+(is\s+)?true|which\s+statements?\s+are\s+true|câu\s+nào\s+đúng|những\s+câu\s+nào\s+đúng/i.test(text);
-    
-    return hasTrueFalseKeywords || (hasTwoOptions && optionsAreTF) || optionsHaveTFIndicators || asksAboutTrueFalse;
+    const asksAboutTrueFalse =
+      /which\s+(of\s+the\s+)?following\s+(is\s+)?true|which\s+statements?\s+are\s+true|câu\s+nào\s+đúng|những\s+câu\s+nào\s+đúng/i.test(
+        text,
+      );
+
+    return (
+      hasTrueFalseKeywords ||
+      (hasTwoOptions && optionsAreTF) ||
+      optionsHaveTFIndicators ||
+      asksAboutTrueFalse
+    );
   };
 
   const aiExtractQuestions = async () => {
@@ -983,15 +1317,16 @@ IMPORTANT: Extract ALL questions you can see on this page. Extract the FULL TEXT
               { letter: "D", text: "" },
             ];
             let correctAnswer = q.correctAnswer || [];
-            
+
             // Only convert to true_false if it's TYPE 1 (2 options only with T/F letters)
             // TYPE 2 (multiple choice with true/false per option) should stay as multiple_choice
             const hasTwoOptions = (q.options || []).length === 2;
-            const optionsAreTF = hasTwoOptions && 
-              ((q.options[0].letter === 'T' && q.options[1].letter === 'F') ||
-               (q.options[0].letter === 'Đ' && q.options[1].letter === 'S') ||
-               (q.options[0].letter === 'D' && q.options[1].letter === 'S'));
-            
+            const optionsAreTF =
+              hasTwoOptions &&
+              ((q.options[0].letter === "T" && q.options[1].letter === "F") ||
+                (q.options[0].letter === "Đ" && q.options[1].letter === "S") ||
+                (q.options[0].letter === "D" && q.options[1].letter === "S"));
+
             if (hasTwoOptions && optionsAreTF) {
               questionType = "true_false";
               questionOptions = [
@@ -999,10 +1334,10 @@ IMPORTANT: Extract ALL questions you can see on this page. Extract the FULL TEXT
                 { letter: "F", text: "False" },
               ];
               // Map Vietnamese Đ/S answers to T/F
-              correctAnswer = correctAnswer.map(ans => {
+              correctAnswer = correctAnswer.map((ans) => {
                 const upperAns = ans.toUpperCase();
-                if (upperAns === 'Đ' || upperAns === 'D') return 'T';
-                if (upperAns === 'S') return 'F';
+                if (upperAns === "Đ" || upperAns === "D") return "T";
+                if (upperAns === "S") return "F";
                 return ans;
               });
             }
@@ -1179,15 +1514,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
               { letter: "D", text: "" },
             ];
             let correctAnswer = q.correctAnswer || [];
-            
+
             // Only convert to true_false if it's TYPE 1 (2 options only with T/F letters)
             // TYPE 2 (multiple choice with true/false per option) should stay as multiple_choice
             const hasTwoOptions = (q.options || []).length === 2;
-            const optionsAreTF = hasTwoOptions && 
-              ((q.options[0].letter === 'T' && q.options[1].letter === 'F') ||
-               (q.options[0].letter === 'Đ' && q.options[1].letter === 'S') ||
-               (q.options[0].letter === 'D' && q.options[1].letter === 'S'));
-            
+            const optionsAreTF =
+              hasTwoOptions &&
+              ((q.options[0].letter === "T" && q.options[1].letter === "F") ||
+                (q.options[0].letter === "Đ" && q.options[1].letter === "S") ||
+                (q.options[0].letter === "D" && q.options[1].letter === "S"));
+
             if (hasTwoOptions && optionsAreTF) {
               questionType = "true_false";
               questionOptions = [
@@ -1195,10 +1531,10 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                 { letter: "F", text: "False" },
               ];
               // Map Vietnamese Đ/S answers to T/F
-              correctAnswer = correctAnswer.map(ans => {
+              correctAnswer = correctAnswer.map((ans) => {
                 const upperAns = ans.toUpperCase();
-                if (upperAns === 'Đ' || upperAns === 'D') return 'T';
-                if (upperAns === 'S') return 'F';
+                if (upperAns === "Đ" || upperAns === "D") return "T";
+                if (upperAns === "S") return "F";
                 return ans;
               });
             }
@@ -1291,6 +1627,60 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const generateShareCode = () => {
+    const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // Unambiguous chars
+    let code = "";
+    for (let i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  };
+
+  const shareTest = async (test) => {
+    const code = generateShareCode();
+    const sharedTest = {
+      ...test,
+      questions: test.questions.map((q) => ({
+        ...q,
+        image: q.image ? "[image]" : q.image, // Strip base64 images
+      })),
+    };
+    try {
+      // Use localStorage for now; for cross-user sharing, a server is needed
+      localStorage.setItem(`share:${code}`, JSON.stringify(sharedTest));
+      setShareCode(code);
+      setShowShareModal(true);
+    } catch (error) {
+      alert("Failed to share test: " + error.message);
+    }
+  };
+
+  const importByCode = async () => {
+    const code = importCode.toUpperCase().trim();
+    if (!code) return;
+    try {
+      // Use localStorage for now
+      const dataStr = localStorage.getItem(`share:${code}`);
+      if (!dataStr) {
+        alert("Code not found or expired");
+        return;
+      }
+      const data = JSON.parse(dataStr);
+      const newTest = {
+        ...data,
+        id: Date.now(),
+        name: `${data.name} (Imported)`,
+        createdAt: new Date().toLocaleDateString(),
+      };
+      setTests([...tests, newTest]);
+      setShowImportModal(false);
+      setImportCode("");
+      alert(`Test "${newTest.name}" imported successfully!`);
+    } catch (error) {
+      alert("Failed to import test: " + error.message);
+    }
   };
 
   const handleTestUpload = async (e) => {
@@ -1427,20 +1817,27 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     input.click();
   };
 
-  const deleteQuestion = (questionId) =>
-    setEditingTest({
-      ...editingTest,
-      questions: editingTest.questions
-        .filter((q) => q.id !== questionId)
-        .map((q, idx) => ({ ...q, number: idx + 1 })),
-    });
-  const updateQuestion = (questionId, updates) =>
-    setEditingTest({
-      ...editingTest,
-      questions: editingTest.questions.map((q) =>
-        q.id === questionId ? { ...q, ...updates } : q,
-      ),
-    });
+  const deleteQuestion = useCallback(
+    (questionId) =>
+      setEditingTest({
+        ...editingTest,
+        questions: editingTest.questions
+          .filter((q) => q.id !== questionId)
+          .map((q, idx) => ({ ...q, number: idx + 1 })),
+      }),
+    [editingTest],
+  );
+
+  const updateQuestion = useCallback(
+    (questionId, updates) =>
+      setEditingTest({
+        ...editingTest,
+        questions: editingTest.questions.map((q) =>
+          q.id === questionId ? { ...q, ...updates } : q,
+        ),
+      }),
+    [editingTest],
+  );
 
   const saveTest = () => {
     if (
@@ -1817,107 +2214,18 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     </div>
   );
 
-  const PageWrapper = ({ children }) => (
-    <div
-      className={`min-h-screen ${theme === "dark" ? "bg-[#0f1115] text-gray-300" : "bg-slate-50 text-gray-600"} transition-colors duration-300 font-sans`}
-    >
-      <Header />
-      {showApiKeyInput && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="max-w-md w-full mx-4 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3
-                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-              >
-                {t("enterGeminiKey")}
-              </h3>
-              <button
-                onClick={() => setShowApiKeyInput(false)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <input
-              type="password"
-              value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-              placeholder={t("geminiKeyPlaceholder")}
-              className={`w-full p-3 rounded-lg border mb-4 ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setShowApiKeyInput(false)}
-                className="flex-1"
-              >
-                {t("cancel")}
-              </Button>
-              <Button onClick={saveGeminiApiKey} className="flex-1">
-                {t("saveApiKey")}
-              </Button>
-            </div>
-            {geminiApiKey && (
-              <p className="text-xs mt-3 text-green-500 flex items-center gap-1">
-                <Check className="w-3 h-3" /> {t("apiKeySaved")}
-              </p>
-            )}
-          </Card>
-        </div>
-      )}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 animate-in fade-in duration-300">
-        {children}
-      </div>
-    </div>
-  );
-
-  const Card = ({ children, className = "" }) => (
-    <div
-      className={`${theme === "dark" ? "bg-gray-800 border-gray-700" : "bg-white border-gray-100 shadow-sm"} border rounded-2xl overflow-hidden transition-colors duration-300 ${className}`}
-    >
-      {children}
-    </div>
-  );
-
-  const Button = ({
-    children,
-    onClick,
-    variant = "primary",
-    className = "",
-    disabled = false,
-    icon = null,
-  }) => {
-    const base =
-      "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
-    const variants = {
-      primary: `bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow active:scale-95`,
-      secondary:
-        theme === "dark"
-          ? `bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white`
-          : `bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm`,
-      dangerOutline:
-        theme === "dark"
-          ? `border border-red-500/50 text-red-400 hover:bg-red-500/10`
-          : `border border-red-200 text-red-600 hover:bg-red-50`,
-      ghost:
-        theme === "dark"
-          ? `hover:bg-gray-800 text-gray-400 hover:text-white`
-          : `hover:bg-gray-100 text-gray-500 hover:text-gray-900`,
-    };
-    return (
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        className={`${base} ${variants[variant]} ${className}`}
-      >
-        {icon} {children}
-      </button>
-    );
-  };
-
   if (currentPage === "pdf-mode-select" && editingTest) {
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         <Card className="max-w-3xl mx-auto p-8 lg:p-12 text-center">
           <h1
             className={`text-3xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
@@ -2089,7 +2397,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
 
   if (currentPage === "image-mode-select" && editingTest) {
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         <Card className="max-w-3xl mx-auto p-8 lg:p-12 text-center">
           <h1
             className={`text-3xl font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
@@ -2232,7 +2549,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   if (currentPage === "crop" && editingTest) {
     const currentPageImg = editingTest.pages[cropState.currentPageIndex];
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         <Card className="p-6 mb-6 sticky top-[73px] z-40">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
@@ -2410,7 +2736,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
 
   if (currentPage === "home") {
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2
             className={`text-4xl font-black tracking-tight mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
@@ -2428,7 +2763,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         )}
 
         <div className="mb-16">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {[
               {
                 id: "pdf-input",
@@ -2506,70 +2841,174 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                 border: "group-hover:border-blue-500/50",
                 tag: "DOCX",
               },
-            ].map((item) => (
-              <label
-                key={item.id}
-                htmlFor={item.id}
-                className={`group relative cursor-pointer flex flex-col gap-3 p-5 border-2 border-dashed rounded-2xl transition-all duration-200 ${
+              {
+                id: "import-code",
+                label: t("importByCode"),
+                desc: "Load shared test",
+                icon: <Globe className="w-5 h-5" />,
+                handler: () => setShowImportModal(true),
+                color: "cyan",
+                accent:
                   theme === "dark"
-                    ? `border-gray-700 bg-gray-800/40 hover:bg-gray-800 ${item.border}`
-                    : `border-gray-200 bg-white hover:shadow-md ${item.border}`
-                }`}
-              >
-                <input
-                  type="file"
-                  id={item.id}
-                  accept={item.accept}
-                  onChange={item.handler}
-                  multiple={item.multi}
-                  className="hidden"
+                    ? "bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20"
+                    : "bg-cyan-50 text-cyan-600 group-hover:bg-cyan-100",
+                border: "group-hover:border-cyan-500/50",
+                tag: "CODE",
+              },
+              {
+                id: "blank-test",
+                label: "Blank Test",
+                desc: "Create empty test",
+                icon: <Plus className="w-5 h-5" />,
+                handler: () => {
+                  const newTest = {
+                    id: Date.now(),
+                    name: `Blank Test ${new Date().toLocaleString()}`,
+                    type: "blank",
+                    questions: [],
+                    settings: {
+                      immediateFeedback: false,
+                      scrambleOptions: false,
+                    },
+                    createdAt: new Date().toLocaleDateString(),
+                  };
+                  setTests([...tests, newTest]);
+                  setEditingTest(newTest);
+                  setCurrentPage("edit");
+                  triggerSimpleAnimation("edit");
+                },
+                color: "gray",
+                accent:
+                  theme === "dark"
+                    ? "bg-gray-500/10 text-gray-400 group-hover:bg-gray-500/20"
+                    : "bg-gray-50 text-gray-600 group-hover:bg-gray-100",
+                border: "group-hover:border-gray-500/50",
+                tag: "NEW",
+              },
+            ].map((item) =>
+              item.id === "blank-test" || item.id === "import-code" ? (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    playClickSound();
+                    item.handler();
+                  }}
+                  className={`group relative cursor-pointer flex flex-col gap-3 p-5 border-2 border-dashed rounded-2xl transition-all duration-200 text-left ${
+                    theme === "dark"
+                      ? `border-gray-700 bg-gray-800/40 hover:bg-gray-800 ${item.border}`
+                      : `border-gray-200 bg-white hover:shadow-md ${item.border}`
+                  }`}
                   disabled={isProcessing}
-                />
-                {/* Top row: icon + tag badge */}
-                <div className="flex items-center justify-between">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${item.accent}`}
-                  >
-                    {item.icon}
+                >
+                  {/* Top row: icon + tag badge */}
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${item.accent}`}
+                    >
+                      {item.icon}
+                    </div>
+                    <span
+                      className={`text-[10px] font-black tracking-widest px-2 py-0.5 rounded-md border ${
+                        theme === "dark"
+                          ? "border-gray-700 text-gray-500 bg-gray-900"
+                          : "border-gray-100 text-gray-400 bg-slate-50"
+                      }`}
+                    >
+                      {item.tag}
+                    </span>
                   </div>
-                  <span
-                    className={`text-[10px] font-black tracking-widest px-2 py-0.5 rounded-md border ${
-                      theme === "dark"
-                        ? "border-gray-700 text-gray-500 bg-gray-900"
-                        : "border-gray-100 text-gray-400 bg-slate-50"
+                  {/* Label + desc */}
+                  <div>
+                    <h3
+                      className={`font-bold text-sm leading-tight mb-0.5 ${
+                        theme === "dark" ? "text-gray-100" : "text-gray-900"
+                      }`}
+                    >
+                      {item.label}
+                    </h3>
+                    <p
+                      className={`text-xs leading-relaxed ${
+                        theme === "dark" ? "text-gray-500" : "text-gray-400"
+                      }`}
+                    >
+                      {item.desc}
+                    </p>
+                  </div>
+                  {/* Bottom click hint */}
+                  <div
+                    className={`flex items-center gap-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
+                      theme === "dark" ? "text-gray-400" : "text-gray-500"
                     }`}
                   >
-                    {item.tag}
-                  </span>
-                </div>
-                {/* Label + desc */}
-                <div>
-                  <h3
-                    className={`font-bold text-sm leading-tight mb-0.5 ${
-                      theme === "dark" ? "text-gray-100" : "text-gray-900"
-                    }`}
-                  >
-                    {item.label}
-                  </h3>
-                  <p
-                    className={`text-xs leading-relaxed ${
-                      theme === "dark" ? "text-gray-500" : "text-gray-400"
-                    }`}
-                  >
-                    {item.desc}
-                  </p>
-                </div>
-                {/* Bottom drag hint */}
-                <div
-                  className={`flex items-center gap-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
-                    theme === "dark" ? "text-gray-400" : "text-gray-500"
+                    <ChevronRight className="w-3 h-3" />
+                    {language === "vi" ? "Nhấn để tạo" : "Click to create"}
+                  </div>
+                </button>
+              ) : (
+                <label
+                  key={item.id}
+                  htmlFor={item.id}
+                  className={`group relative cursor-pointer flex flex-col gap-3 p-5 border-2 border-dashed rounded-2xl transition-all duration-200 ${
+                    theme === "dark"
+                      ? `border-gray-700 bg-gray-800/40 hover:bg-gray-800 ${item.border}`
+                      : `border-gray-200 bg-white hover:shadow-md ${item.border}`
                   }`}
                 >
-                  <ChevronRight className="w-3 h-3" />
-                  {language === "vi" ? "Nhấn để chọn" : "Click to select"}
-                </div>
-              </label>
-            ))}
+                  <input
+                    type="file"
+                    id={item.id}
+                    accept={item.accept}
+                    onChange={item.handler}
+                    multiple={item.multi}
+                    className="hidden"
+                    disabled={isProcessing}
+                  />
+                  {/* Top row: icon + tag badge */}
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${item.accent}`}
+                    >
+                      {item.icon}
+                    </div>
+                    <span
+                      className={`text-[10px] font-black tracking-widest px-2 py-0.5 rounded-md border ${
+                        theme === "dark"
+                          ? "border-gray-700 text-gray-500 bg-gray-900"
+                          : "border-gray-100 text-gray-400 bg-slate-50"
+                      }`}
+                    >
+                      {item.tag}
+                    </span>
+                  </div>
+                  {/* Label + desc */}
+                  <div>
+                    <h3
+                      className={`font-bold text-sm leading-tight mb-0.5 text-left ${
+                        theme === "dark" ? "text-gray-100" : "text-gray-900"
+                      }`}
+                    >
+                      {item.label}
+                    </h3>
+                    <p
+                      className={`text-xs leading-relaxed ${
+                        theme === "dark" ? "text-gray-500" : "text-gray-400"
+                      }`}
+                    >
+                      {item.desc}
+                    </p>
+                  </div>
+                  {/* Bottom drag hint */}
+                  <div
+                    className={`flex items-center gap-1.5 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity ${
+                      theme === "dark" ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    <ChevronRight className="w-3 h-3" />
+                    {language === "vi" ? "Nhấn để chọn" : "Click to select"}
+                  </div>
+                </label>
+              ),
+            )}
           </div>
         </div>
 
@@ -2651,7 +3090,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                     </button>
                   </div>
                   <div
-                    className={`grid grid-cols-3 divide-x border-t text-sm font-medium ${theme === "dark" ? "divide-gray-700 border-gray-700" : "divide-gray-100 border-gray-100"}`}
+                    className={`grid grid-cols-4 divide-x border-t text-sm font-medium ${theme === "dark" ? "divide-gray-700 border-gray-700" : "divide-gray-100 border-gray-100"}`}
                   >
                     <button
                       onClick={() => {
@@ -2661,18 +3100,36 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                         playPageTransitionSound();
                         triggerSimpleAnimation("edit");
                       }}
-                      className="py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex justify-center"
+                      className="py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-1"
                     >
                       <Edit2 className="w-4 h-4" />
+                      <span className="text-[10px] font-semibold opacity-60">
+                        {t("edit")}
+                      </span>
                     </button>
                     <button
                       onClick={() => {
                         playClickSound();
                         downloadTest(test);
                       }}
-                      className="py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex justify-center"
+                      className="py-2.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex flex-col items-center gap-1"
                     >
                       <Upload className="w-4 h-4 rotate-180" />
+                      <span className="text-[10px] font-semibold opacity-60">
+                        {language === "vi" ? "Tải xuống" : "Export"}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        playClickSound();
+                        shareTest(test);
+                      }}
+                      className="py-2.5 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10 dark:hover:text-blue-400 transition-colors flex flex-col items-center gap-1"
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span className="text-[10px] font-semibold opacity-60">
+                        {language === "vi" ? "Chia sẻ" : "Share"}
+                      </span>
                     </button>
                     <button
                       onClick={() => {
@@ -2680,9 +3137,12 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                         if (confirm(t("testDeleted")))
                           setTests(tests.filter((t) => t.id !== test.id));
                       }}
-                      className="py-2 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors flex justify-center"
+                      className="py-2.5 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400 transition-colors flex flex-col items-center gap-1"
                     >
                       <Trash2 className="w-4 h-4" />
+                      <span className="text-[10px] font-semibold opacity-60">
+                        {t("delete")}
+                      </span>
                     </button>
                   </div>
                 </Card>
@@ -2696,7 +3156,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
 
   if (currentPage === "edit" && editingTest) {
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center gap-4 mb-8">
           <Button
@@ -2729,6 +3198,34 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
               icon={<Plus className="w-4 h-4" />}
             >
               {t("addQuestion")}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                playClickSound();
+                setEditingTest({
+                  ...editingTest,
+                  questions: [
+                    ...editingTest.questions,
+                    {
+                      id: Date.now(),
+                      number: editingTest.questions.length + 1,
+                      text: "",
+                      correctAnswer: [],
+                      type: "multiple_choice",
+                      options: [
+                        { letter: "A", text: "" },
+                        { letter: "B", text: "" },
+                        { letter: "C", text: "" },
+                        { letter: "D", text: "" },
+                      ],
+                    },
+                  ],
+                });
+              }}
+              icon={<Plus className="w-4 h-4" />}
+            >
+              Add Text Question
             </Button>
             <Button
               onClick={() => {
@@ -2867,25 +3364,32 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
               </div>
 
               <div className="p-5 flex-1 space-y-4">
-                {/* ── QUESTION PREVIEW ── */}
-                {(question.text || question.image) && (
+                {/* ── QUESTION TEXT EDITOR ── */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">
+                    {t("questionText")}
+                  </label>
+                  <textarea
+                    value={question.text || ""}
+                    onChange={(e) =>
+                      updateQuestion(question.id, { text: e.target.value })
+                    }
+                    placeholder="Enter question text..."
+                    className={`w-full text-sm rounded-lg border focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors p-3 resize-none ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+                    rows={4}
+                  />
+                </div>
+
+                {/* ── QUESTION IMAGE ── */}
+                {question.image && (
                   <div
                     className={`rounded-xl p-3 border ${theme === "dark" ? "bg-gray-900/60 border-gray-700" : "bg-slate-50 border-gray-100"}`}
                   >
-                    {question.text && (
-                      <p
-                        className={`text-sm leading-relaxed ${theme === "dark" ? "text-gray-300" : "text-gray-700"}`}
-                      >
-                        {question.text}
-                      </p>
-                    )}
-                    {question.image && (
-                      <img
-                        src={question.image}
-                        alt={`Q${question.number}`}
-                        className={`w-full rounded-lg border object-contain mt-2 ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
-                      />
-                    )}
+                    <img
+                      src={question.image}
+                      alt={`Q${question.number}`}
+                      className={`w-full rounded-lg border object-contain ${theme === "dark" ? "border-gray-700" : "border-gray-200"}`}
+                    />
                   </div>
                 )}
 
@@ -2903,10 +3407,12 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                         // Create 4 options (A, B, C, D) for true/false questions
                         if (question.options?.length >= 4) {
                           // Preserve existing option text, just ensure we have 4 options
-                          updates.options = question.options.slice(0, 4).map((opt, idx) => ({
-                            letter: String.fromCharCode(65 + idx), // A, B, C, D
-                            text: opt.text || "",
-                          }));
+                          updates.options = question.options
+                            .slice(0, 4)
+                            .map((opt, idx) => ({
+                              letter: String.fromCharCode(65 + idx), // A, B, C, D
+                              text: opt.text || "",
+                            }));
                         } else {
                           updates.options = [
                             { letter: "A", text: "" },
@@ -2952,148 +3458,221 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                     </label>
 
                     {question.type === "multiple_choice" && (
-                      <div className="flex flex-col gap-2">
-                        {question.options.map((option) => {
-                          const isCorrect = question.correctAnswer.includes(
-                            option.letter,
-                          );
-                          return (
-                            <label
-                              key={option.letter}
-                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 cursor-pointer transition-all select-none ${
-                                isCorrect
-                                  ? "border-red-500 bg-red-50 dark:bg-red-500/10"
-                                  : theme === "dark"
-                                    ? "border-gray-700 hover:border-gray-500"
-                                    : "border-gray-100 bg-slate-50 hover:border-gray-300"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="hidden"
-                                checked={isCorrect}
-                                onChange={(e) => {
-                                  const curr = question.correctAnswer;
-                                  const next = e.target.checked
-                                    ? [...curr, option.letter].sort()
-                                    : curr.filter((a) => a !== option.letter);
-                                  updateQuestion(question.id, {
-                                    correctAnswer: next,
-                                  });
-                                }}
-                              />
-                              {/* Letter badge */}
-                              <span
-                                className={`w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold transition-colors ${
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-bold uppercase tracking-wider opacity-60">
+                            {t("options")}
+                          </label>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              const newLetter = String.fromCharCode(
+                                65 + question.options.length,
+                              );
+                              updateQuestion(question.id, {
+                                options: [
+                                  ...question.options,
+                                  { letter: newLetter, text: "" },
+                                ],
+                              });
+                            }}
+                            className="text-xs py-1 px-2"
+                            icon={<Plus className="w-3 h-3" />}
+                          >
+                            {t("addOption")}
+                          </Button>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {question.options.map((option, idx) => {
+                            const isCorrect = question.correctAnswer.includes(
+                              option.letter,
+                            );
+                            return (
+                              <div
+                                key={option.letter}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all ${
                                   isCorrect
-                                    ? "bg-red-500 text-white"
+                                    ? "border-red-500 bg-red-50 dark:bg-red-500/10"
                                     : theme === "dark"
-                                      ? "bg-gray-700 text-gray-300"
-                                      : "bg-white border border-gray-200 text-gray-500"
+                                      ? "border-gray-700"
+                                      : "border-gray-100 bg-slate-50"
                                 }`}
                               >
-                                {option.letter}
-                              </span>
-                              {/* Option text */}
-                              <span
-                                className={`text-sm leading-snug flex-1 ${
-                                  isCorrect
-                                    ? "text-red-700 dark:text-red-400 font-medium"
-                                    : theme === "dark"
-                                      ? "text-gray-300"
-                                      : "text-gray-600"
-                                }`}
-                              >
-                                {option.text || (
-                                  <span className="opacity-40 italic">
-                                    {t(language === "vi" ? "noTextVi" : "noText")}
-                                  </span>
+                                <input
+                                  type="checkbox"
+                                  checked={isCorrect}
+                                  onChange={(e) => {
+                                    const curr = question.correctAnswer;
+                                    const next = e.target.checked
+                                      ? [...curr, option.letter].sort()
+                                      : curr.filter((a) => a !== option.letter);
+                                    updateQuestion(question.id, {
+                                      correctAnswer: next,
+                                    });
+                                  }}
+                                  className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
+                                />
+                                {/* Letter badge */}
+                                <span
+                                  className={`w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold transition-colors ${
+                                    isCorrect
+                                      ? "bg-red-500 text-white"
+                                      : theme === "dark"
+                                        ? "bg-gray-700 text-gray-300"
+                                        : "bg-white border border-gray-200 text-gray-500"
+                                  }`}
+                                >
+                                  {option.letter}
+                                </span>
+                                {/* Option text input */}
+                                <input
+                                  type="text"
+                                  value={option.text || ""}
+                                  onChange={(e) => {
+                                    const newOptions = [...question.options];
+                                    newOptions[idx] = {
+                                      ...newOptions[idx],
+                                      text: e.target.value,
+                                    };
+                                    updateQuestion(question.id, {
+                                      options: newOptions,
+                                    });
+                                  }}
+                                  placeholder={`Option ${option.letter}`}
+                                  className={`text-sm leading-snug flex-1 bg-transparent border-0 focus:ring-0 p-0 ${
+                                    isCorrect
+                                      ? "text-red-700 dark:text-red-400 font-medium"
+                                      : theme === "dark"
+                                        ? "text-gray-300"
+                                        : "text-gray-600"
+                                  }`}
+                                />
+                                {/* Remove option */}
+                                {question.options.length > 2 && (
+                                  <button
+                                    onClick={() => {
+                                      const newOptions =
+                                        question.options.filter(
+                                          (_, i) => i !== idx,
+                                        );
+                                      const newCorrectAnswer =
+                                        question.correctAnswer.filter(
+                                          (a) => a !== option.letter,
+                                        );
+                                      updateQuestion(question.id, {
+                                        options: newOptions,
+                                        correctAnswer: newCorrectAnswer,
+                                      });
+                                    }}
+                                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
                                 )}
-                              </span>
-                              {/* Check indicator */}
-                              {isCorrect && (
-                                <Check className="w-4 h-4 text-red-500 flex-shrink-0" />
-                              )}
-                            </label>
-                          );
-                        })}
+                                {/* Check indicator */}
+                                {isCorrect && (
+                                  <Check className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
 
                     {question.type === "true_false" && (
-                      <div className="space-y-3">
-                        {question.options.map((option) => {
-                          const isTrue = question.correctAnswer.includes(
-                            option.letter,
-                          );
-                          return (
-                            <div
-                              key={option.letter}
-                              className={`flex items-center gap-3 p-3 rounded-xl border-2 ${
-                                isTrue
-                                  ? "border-red-500 bg-red-50 dark:bg-red-500/10"
-                                  : theme === "dark"
-                                    ? "border-gray-700 bg-gray-800"
-                                    : "border-gray-200 bg-white"
-                              }`}
-                            >
-                              <span className="font-bold text-sm w-6">
-                                {option.letter})
-                              </span>
-                              <span className="flex-1 text-sm">
-                                {option.text || (
-                                  <span className="opacity-40 italic">
-                                    {t(language === "vi" ? "noTextVi" : "noText")}
-                                  </span>
-                                )}
-                              </span>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() =>
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-60">
+                          {t("options")}
+                        </label>
+                        <div className="space-y-3">
+                          {question.options.map((option, idx) => {
+                            const isSelected = question.correctAnswer.includes(
+                              option.letter,
+                            );
+                            return (
+                              <div
+                                key={option.letter}
+                                className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                                  isSelected
+                                    ? "border-red-500 bg-red-50 dark:bg-red-500/10"
+                                    : theme === "dark"
+                                      ? "border-gray-700 bg-gray-800"
+                                      : "border-gray-200 bg-white"
+                                }`}
+                              >
+                                <span className="font-bold text-sm w-6 flex-shrink-0">
+                                  {option.letter})
+                                </span>
+                                <input
+                                  type="text"
+                                  value={option.text || ""}
+                                  onChange={(e) => {
+                                    const newOptions = [...question.options];
+                                    newOptions[idx] = {
+                                      ...newOptions[idx],
+                                      text: e.target.value,
+                                    };
                                     updateQuestion(question.id, {
-                                      correctAnswer: [
-                                        ...(question.correctAnswer || []).filter(
-                                          (a) => a !== option.letter,
-                                        ),
-                                        option.letter,
-                                      ],
-                                    })
-                                  }
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                    isTrue
-                                      ? "bg-red-500 text-white"
+                                      options: newOptions,
+                                    });
+                                  }}
+                                  placeholder={`Option ${option.letter}`}
+                                  className={`text-sm flex-1 min-w-0 bg-transparent border-0 focus:ring-0 p-0 ${
+                                    isSelected
+                                      ? "text-red-700 dark:text-red-400 font-medium"
                                       : theme === "dark"
-                                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                        ? "text-gray-300"
+                                        : "text-gray-600"
                                   }`}
-                                >
-                                  {t(language === "vi" ? "trueLabelVi" : "trueLabel")}
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    updateQuestion(question.id, {
-                                      correctAnswer: (question.correctAnswer || []).filter(
-                                        (a) => a !== option.letter,
-                                      ),
-                                    })
-                                  }
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                    !isTrue
-                                      ? "bg-gray-500 text-white"
-                                      : theme === "dark"
-                                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                  }`}
-                                >
-                                  {t(language === "vi" ? "falseLabelVi" : "falseLabel")}
-                                </button>
+                                />
+                                <div className="flex gap-1 flex-shrink-0">
+                                  <button
+                                    onClick={() =>
+                                      updateQuestion(question.id, {
+                                        correctAnswer: [
+                                          ...(
+                                            question.correctAnswer || []
+                                          ).filter((a) => a !== option.letter),
+                                          option.letter,
+                                        ],
+                                      })
+                                    }
+                                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                                      isSelected
+                                        ? "bg-red-500 text-white"
+                                        : theme === "dark"
+                                          ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    }`}
+                                  >
+                                    {language === "vi" ? "Đúng" : "True"}
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      updateQuestion(question.id, {
+                                        correctAnswer: (
+                                          question.correctAnswer || []
+                                        ).filter((a) => a !== option.letter),
+                                      })
+                                    }
+                                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+                                      !isSelected
+                                        ? "bg-gray-500 text-white"
+                                        : theme === "dark"
+                                          ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    }`}
+                                  >
+                                    {language === "vi" ? "Sai" : "False"}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
-
                     {question.type === "text_input" && (
                       <input
                         type="text"
@@ -3258,24 +3837,24 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                           return (
                             <button
                               key={option.letter}
-                               onClick={(e) => {
-                                 e.preventDefault();
-                                 e.stopPropagation();
-                                 if (!currentTest.settings?.immediateFeedback) {
-                                   const curr = userAnswers[question.id] || [];
-                                   handleAnswerSelect(
-                                     question.id,
-                                     isSelected
-                                       ? curr.filter((a) => a !== option.letter)
-                                       : [...curr, option.letter].sort(),
-                                   );
-                                 } else {
-                                   // Immediate feedback mode - single selection
-                                   handleAnswerSelect(question.id, [
-                                     option.letter,
-                                   ]);
-                                 }
-                               }}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (!currentTest.settings?.immediateFeedback) {
+                                  const curr = userAnswers[question.id] || [];
+                                  handleAnswerSelect(
+                                    question.id,
+                                    isSelected
+                                      ? curr.filter((a) => a !== option.letter)
+                                      : [...curr, option.letter].sort(),
+                                  );
+                                } else {
+                                  // Immediate feedback mode - single selection
+                                  handleAnswerSelect(question.id, [
+                                    option.letter,
+                                  ]);
+                                }
+                              }}
                               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all active:scale-[0.99] ${
                                 showFeedback
                                   ? isCorrect
@@ -3374,9 +3953,9 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                                     e.preventDefault();
                                     e.stopPropagation();
                                     handleAnswerSelect(question.id, [
-                                      ...(userAnswers[question.id] || []).filter(
-                                        (a) => a !== option.letter,
-                                      ),
+                                      ...(
+                                        userAnswers[question.id] || []
+                                      ).filter((a) => a !== option.letter),
                                       option.letter,
                                     ]);
                                   }}
@@ -3392,15 +3971,22 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                                             : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                   }`}
                                 >
-                                  {t(language === "vi" ? "trueLabelVi" : "trueLabel")}
+                                  {t(
+                                    language === "vi"
+                                      ? "trueLabelVi"
+                                      : "trueLabel",
+                                  )}
                                 </button>
                                 <button
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    handleAnswerSelect(question.id, (userAnswers[question.id] || []).filter(
-                                      (a) => a !== option.letter,
-                                    ));
+                                    handleAnswerSelect(
+                                      question.id,
+                                      (userAnswers[question.id] || []).filter(
+                                        (a) => a !== option.letter,
+                                      ),
+                                    );
                                   }}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                     !isSelected
@@ -3410,7 +3996,11 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                   }`}
                                 >
-                                  {t(language === "vi" ? "falseLabelVi" : "falseLabel")}
+                                  {t(
+                                    language === "vi"
+                                      ? "falseLabelVi"
+                                      : "falseLabel",
+                                  )}
                                 </button>
                               </div>
                             </div>
@@ -3427,7 +4017,11 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                       onChange={(e) =>
                         handleAnswerSelect(question.id, e.target.value)
                       }
-                      placeholder={t(language === "vi" ? "typeAnswerHereVi" : "typeAnswerHere")}
+                      placeholder={t(
+                        language === "vi"
+                          ? "typeAnswerHereVi"
+                          : "typeAnswerHere",
+                      )}
                       className={`w-full p-4 text-lg rounded-xl border-2 focus:ring-0 focus:border-red-500 transition-colors ${
                         theme === "dark"
                           ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
@@ -3460,7 +4054,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   if (currentPage === "results" && testResults && currentTest) {
     const isPassed = testResults.score >= 5;
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         <Card className="max-w-2xl mx-auto p-8 lg:p-12 text-center mb-8">
           <h1 className="text-3xl font-black mb-6 uppercase tracking-widest opacity-50">
             {t("testResults")}
@@ -3623,9 +4226,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                           <span className="font-bold text-sm w-6">
                             {option.letter})
                           </span>
-                          <span className="flex-1 text-sm">
-                            {option.text}
-                          </span>
+                          <span className="flex-1 text-sm">{option.text}</span>
                           <div className="flex gap-2">
                             <button
                               onClick={(e) => {
@@ -3652,9 +4253,11 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                setRapidAnswer((rapidAnswer || []).filter(
-                                  (a) => a !== option.letter,
-                                ));
+                                setRapidAnswer(
+                                  (rapidAnswer || []).filter(
+                                    (a) => a !== option.letter,
+                                  ),
+                                );
                               }}
                               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                                 !isSelected
@@ -3735,7 +4338,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         ? Math.round((rapidScore / rapidTotalQuestions) * 100)
         : 0;
     return (
-      <PageWrapper>
+      <PageWrapper
+        shareCode={shareCode}
+        showShareModal={showShareModal}
+        setShowShareModal={setShowShareModal}
+        showImportModal={showImportModal}
+        setShowImportModal={setShowImportModal}
+        importCode={importCode}
+        setImportCode={setImportCode}
+        importByCode={importByCode}
+      >
         <Card className="max-w-2xl mx-auto p-8 lg:p-12 text-center">
           <Zap className="w-16 h-16 text-orange-500 mx-auto mb-6" />
           <h1 className="text-3xl font-black mb-4">{t("rapidCompleted")}</h1>
