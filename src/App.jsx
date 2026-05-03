@@ -286,6 +286,18 @@ const translations = {
     immediateFeedbackDesc: "Hiển thị ngay đáp án đúng sau khi chọn",
     scrambleOptions: "Xáo trộn đáp án",
     scrambleOptionsDesc: "Ngẫu nhiên thứ tự A, B, C, D",
+
+    // True/False button labels
+    trueLabel: "True",
+    falseLabel: "False",
+    trueLabelVi: "Đúng",
+    falseLabelVi: "Sai",
+
+    // UI labels
+    noText: "No text",
+    noTextVi: "Không có văn bản",
+    typeAnswerHere: "Type answer here...",
+    typeAnswerHereVi: "Nhập câu trả lời ở đây...",
   },
 };
 
@@ -809,6 +821,26 @@ const VisualTestPlatform = () => {
     }
   };
 
+  const isTrueFalseQuestion = (q) => {
+    const text = (q.text || "").toLowerCase();
+    const hasTrueFalseKeywords = /true\s*\/\s*false|true\s*or\s*false|đúng\s*\/\s*sai|đúng\s*hay\s*sai|true-false|đúng-sai|đúng\s*-\s*sai|đúng\s*,\s*sai/i.test(text);
+    const hasTwoOptions = (q.options || []).length === 2;
+    const optionsAreTF = hasTwoOptions && 
+      ((q.options[0].letter === 'T' && q.options[1].letter === 'F') ||
+       (q.options[0].letter === 'Đ' && q.options[1].letter === 'S') ||
+       (q.options[0].letter === 'D' && q.options[1].letter === 'S'));
+    
+    // Check if options contain true/false indicators (format: "statement (true/false)")
+    const optionsHaveTFIndicators = (q.options || []).some(opt => 
+      /\(true\s*\/\s*false\)|\(true\s*or\s*false\)|\(đúng\s*\/\s*sai\)|\(đúng\s*hay\s*sai\)|answer:\s*(true|false|đúng|sai)/i.test(opt.text || "")
+    );
+    
+    // Check if question asks about true/false statements
+    const asksAboutTrueFalse = /which\s+(of\s+the\s+)?following\s+(is\s+)?true|which\s+statements?\s+are\s+true|câu\s+nào\s+đúng|những\s+câu\s+nào\s+đúng/i.test(text);
+    
+    return hasTrueFalseKeywords || (hasTwoOptions && optionsAreTF) || optionsHaveTFIndicators || asksAboutTrueFalse;
+  };
+
   const aiExtractQuestions = async () => {
     const apiKey = localStorage.getItem("azota-gemini-api-key");
     if (!apiKey) {
@@ -858,6 +890,29 @@ CRITICAL INSTRUCTIONS:
 5. Preserve the original language of the questions (Vietnamese, English, etc.)
 6. Include mathematical formulas, chemical equations, code snippets exactly as they appear
 
+IMPORTANT - TRUE/FALSE QUESTIONS:
+
+There are TWO types of true/false questions:
+
+TYPE 1: Simple True/False (2 options only)
+- Look for questions that are clearly True/False questions by checking:
+  * Question text contains "True/False", "True or False", "Đúng/Sai", "Đúng hay Sai", "Đúng - Sai"
+  * Only 2 options available (not A, B, C, D)
+  * Options are labeled as T/F, Đ/S, D/S, or similar
+- For Simple True/False questions, ALWAYS use type "true_false" and options: [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}]
+- If the Vietnamese options are "Đ" (Đúng) and "S" (Sai), map them to T/F in the response
+- The correctAnswer should be ["T"] for True/Đúng or ["F"] for False/Sai
+
+TYPE 2: Multiple Choice with True/False per option
+- Look for questions where:
+  * Each option (A, B, C, D) is a statement
+  * Each option has its own true/false answer indicated
+  * Options contain "(true/false)", "(True/False)", "(Đúng/Sai)", or "answer: True/False"
+  * Question asks "Which of the following are true?" or similar
+- For this type, use type "multiple_choice" with the option letters (A, B, C, D)
+- The correctAnswer should be an array of letters for the TRUE statements only
+- Example: If options A and C are true, correctAnswer should be ["A", "C"]
+
 For each question on this page, identify:
 1. The question number
 2. The FULL question text (include ALL text content)
@@ -873,8 +928,28 @@ EXAMPLES OF CORRECT OPTION EXTRACTION:
 - Image shows "C. x = 2" → {"letter": "C", "text": "x = 2"}
 - Image shows "D. Both A and B are correct" → {"letter": "D", "text": "Both A and B are correct"}
 
+TRUE/FALSE QUESTION EXAMPLES:
+
+TYPE 1 (Simple True/False):
+- Question: "Paris is the capital of France (True/False)" with options "Đ. Đúng" and "S. Sai" → {"type": "true_false", "options": [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}], "correctAnswer": ["T"]}
+- Question: "The Earth is flat (Đúng/Sai)" with options "Đ" and "S" → {"type": "true_false", "options": [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}], "correctAnswer": ["F"]}
+
+TYPE 2 (Multiple Choice with True/False per option):
+- Question: "Which statements are true?" with:
+  * "A. Paris is in France (true/false) answer: True"
+  * "B. London is in Germany (true/false) answer: False"
+  * "C. Tokyo is in Japan (true/false) answer: True"
+  * "D. Berlin is in France (true/false) answer: False"
+  → {"type": "multiple_choice", "options": [{"letter": "A", "text": "Paris is in France"}, {"letter": "B", "text": "London is in Germany"}, {"letter": "C", "text": "Tokyo is in Japan"}, {"letter": "D", "text": "Berlin is in France"}], "correctAnswer": ["A", "C"]}
+
+- Question: "Những câu nào đúng?" with:
+  * "A. Hà Nội là thủ đô Việt Nam (Đúng/Sai) đáp án: Đúng"
+  * "B. TP.HCM là thủ đô Việt Nam (Đúng/Sai) đáp án: Sai"
+  * "C. Đà Nẵng là thành phố lớn thứ 3 (Đúng/Sai) đáp án: Đúng"
+  * "D. Cần Thơ là thủ đô Việt Nam (Đúng/Sai) đáp án: Sai"
+  → {"type": "multiple_choice", "options": [{"letter": "A", "text": "Hà Nội là thủ đô Việt Nam"}, {"letter": "B", "text": "TP.HCM là thủ đô Việt Nam"}, {"letter": "C", "text": "Đà Nẵng là thành phố lớn thứ 3"}, {"letter": "D", "text": "Cần Thơ là thủ đô Việt Nam"}], "correctAnswer": ["A", "C"]}
+
 If you cannot determine the correct answer, leave correctAnswer empty array.
-For True/False questions, use: options: [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}].
 For questions without options (fill-in-the-blank, short answer), use type "text_input" and leave options empty.
 
 IMPORTANT: Extract ALL questions you can see on this page. Extract the FULL TEXT for both questions AND options. NEVER leave option text empty.`,
@@ -900,20 +975,46 @@ IMPORTANT: Extract ALL questions you can see on this page. Extract the FULL TEXT
         if (jsonMatch) {
           const parsedQuestions = JSON.parse(jsonMatch[0]);
           parsedQuestions.forEach((q) => {
+            let questionType = q.type || "multiple_choice";
+            let questionOptions = q.options || [
+              { letter: "A", text: "" },
+              { letter: "B", text: "" },
+              { letter: "C", text: "" },
+              { letter: "D", text: "" },
+            ];
+            let correctAnswer = q.correctAnswer || [];
+            
+            // Only convert to true_false if it's TYPE 1 (2 options only with T/F letters)
+            // TYPE 2 (multiple choice with true/false per option) should stay as multiple_choice
+            const hasTwoOptions = (q.options || []).length === 2;
+            const optionsAreTF = hasTwoOptions && 
+              ((q.options[0].letter === 'T' && q.options[1].letter === 'F') ||
+               (q.options[0].letter === 'Đ' && q.options[1].letter === 'S') ||
+               (q.options[0].letter === 'D' && q.options[1].letter === 'S'));
+            
+            if (hasTwoOptions && optionsAreTF) {
+              questionType = "true_false";
+              questionOptions = [
+                { letter: "T", text: "True" },
+                { letter: "F", text: "False" },
+              ];
+              // Map Vietnamese Đ/S answers to T/F
+              correctAnswer = correctAnswer.map(ans => {
+                const upperAns = ans.toUpperCase();
+                if (upperAns === 'Đ' || upperAns === 'D') return 'T';
+                if (upperAns === 'S') return 'F';
+                return ans;
+              });
+            }
             questions.push({
               id: Date.now() + questions.length,
               pageIndex: i,
               text: q.text || "",
               image: q.text ? null : pageImage,
               number: q.number || questions.length + 1,
-              type: q.type || "multiple_choice",
-              options: q.options || [
-                { letter: "A", text: "" },
-                { letter: "B", text: "" },
-                { letter: "C", text: "" },
-                { letter: "D", text: "" },
-              ],
-              correctAnswer: q.correctAnswer || [],
+              type: questionType,
+              options: questionOptions,
+              correctAnswer: correctAnswer,
             });
           });
         }
@@ -985,6 +1086,29 @@ CRITICAL INSTRUCTIONS:
 5. Preserve the original language of the questions (Vietnamese, English, etc.)
 6. Include mathematical formulas, chemical equations, code snippets exactly as they appear
 
+IMPORTANT - TRUE/FALSE QUESTIONS:
+
+There are TWO types of true/false questions:
+
+TYPE 1: Simple True/False (2 options only)
+- Look for questions that are clearly True/False questions by checking:
+  * Question text contains "True/False", "True or False", "Đúng/Sai", "Đúng hay Sai", "Đúng - Sai"
+  * Only 2 options available (not A, B, C, D)
+  * Options are labeled as T/F, Đ/S, D/S, or similar
+- For Simple True/False questions, ALWAYS use type "true_false" and options: [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}]
+- If the Vietnamese options are "Đ" (Đúng) and "S" (Sai), map them to T/F in the response
+- The correctAnswer should be ["T"] for True/Đúng or ["F"] for False/Sai
+
+TYPE 2: Multiple Choice with True/False per option
+- Look for questions where:
+  * Each option (A, B, C, D) is a statement
+  * Each option has its own true/false answer indicated
+  * Options contain "(true/false)", "(True/False)", "(Đúng/Sai)", or "answer: True/False"
+  * Question asks "Which of the following are true?" or similar
+- For this type, use type "multiple_choice" with the option letters (A, B, C, D)
+- The correctAnswer should be an array of letters for the TRUE statements only
+- Example: If options A and C are true, correctAnswer should be ["A", "C"]
+
 For each question in this image, identify:
 1. The question number
 2. The FULL question text (include ALL text content)
@@ -1000,8 +1124,28 @@ EXAMPLES OF CORRECT OPTION EXTRACTION:
 - Image shows "C. x = 2" → {"letter": "C", "text": "x = 2"}
 - Image shows "D. Both A and B are correct" → {"letter": "D", "text": "Both A and B are correct"}
 
+TRUE/FALSE QUESTION EXAMPLES:
+
+TYPE 1 (Simple True/False):
+- Question: "Paris is the capital of France (True/False)" with options "Đ. Đúng" and "S. Sai" → {"type": "true_false", "options": [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}], "correctAnswer": ["T"]}
+- Question: "The Earth is flat (Đúng/Sai)" with options "Đ" and "S" → {"type": "true_false", "options": [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}], "correctAnswer": ["F"]}
+
+TYPE 2 (Multiple Choice with True/False per option):
+- Question: "Which statements are true?" with:
+  * "A. Paris is in France (true/false) answer: True"
+  * "B. London is in Germany (true/false) answer: False"
+  * "C. Tokyo is in Japan (true/false) answer: True"
+  * "D. Berlin is in France (true/false) answer: False"
+  → {"type": "multiple_choice", "options": [{"letter": "A", "text": "Paris is in France"}, {"letter": "B", "text": "London is in Germany"}, {"letter": "C", "text": "Tokyo is in Japan"}, {"letter": "D", "text": "Berlin is in France"}], "correctAnswer": ["A", "C"]}
+
+- Question: "Những câu nào đúng?" with:
+  * "A. Hà Nội là thủ đô Việt Nam (Đúng/Sai) đáp án: Đúng"
+  * "B. TP.HCM là thủ đô Việt Nam (Đúng/Sai) đáp án: Sai"
+  * "C. Đà Nẵng là thành phố lớn thứ 3 (Đúng/Sai) đáp án: Đúng"
+  * "D. Cần Thơ là thủ đô Việt Nam (Đúng/Sai) đáp án: Sai"
+  → {"type": "multiple_choice", "options": [{"letter": "A", "text": "Hà Nội là thủ đô Việt Nam"}, {"letter": "B", "text": "TP.HCM là thủ đô Việt Nam"}, {"letter": "C", "text": "Đà Nẵng là thành phố lớn thứ 3"}, {"letter": "D", "text": "Cần Thơ là thủ đô Việt Nam"}], "correctAnswer": ["A", "C"]}
+
 If you cannot determine the correct answer, leave correctAnswer empty array.
-For True/False questions, use: options: [{"letter": "T", "text": "True"}, {"letter": "F", "text": "False"}].
 For questions without options (fill-in-the-blank, short answer), use type "text_input" and leave options empty.
 
 IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEXT for both questions AND options. NEVER leave option text empty.`,
@@ -1027,20 +1171,46 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         if (jsonMatch) {
           const parsedQuestions = JSON.parse(jsonMatch[0]);
           parsedQuestions.forEach((q) => {
+            let questionType = q.type || "multiple_choice";
+            let questionOptions = q.options || [
+              { letter: "A", text: "" },
+              { letter: "B", text: "" },
+              { letter: "C", text: "" },
+              { letter: "D", text: "" },
+            ];
+            let correctAnswer = q.correctAnswer || [];
+            
+            // Only convert to true_false if it's TYPE 1 (2 options only with T/F letters)
+            // TYPE 2 (multiple choice with true/false per option) should stay as multiple_choice
+            const hasTwoOptions = (q.options || []).length === 2;
+            const optionsAreTF = hasTwoOptions && 
+              ((q.options[0].letter === 'T' && q.options[1].letter === 'F') ||
+               (q.options[0].letter === 'Đ' && q.options[1].letter === 'S') ||
+               (q.options[0].letter === 'D' && q.options[1].letter === 'S'));
+            
+            if (hasTwoOptions && optionsAreTF) {
+              questionType = "true_false";
+              questionOptions = [
+                { letter: "T", text: "True" },
+                { letter: "F", text: "False" },
+              ];
+              // Map Vietnamese Đ/S answers to T/F
+              correctAnswer = correctAnswer.map(ans => {
+                const upperAns = ans.toUpperCase();
+                if (upperAns === 'Đ' || upperAns === 'D') return 'T';
+                if (upperAns === 'S') return 'F';
+                return ans;
+              });
+            }
             questions.push({
               id: Date.now() + questions.length,
               pageIndex: i,
               text: q.text || "",
               image: q.text ? null : pageImage,
               number: q.number || questions.length + 1,
-              type: q.type || "multiple_choice",
-              options: q.options || [
-                { letter: "A", text: "" },
-                { letter: "B", text: "" },
-                { letter: "C", text: "" },
-                { letter: "D", text: "" },
-              ],
-              correctAnswer: q.correctAnswer || [],
+              type: questionType,
+              options: questionOptions,
+              correctAnswer: correctAnswer,
             });
           });
         }
@@ -2730,10 +2900,21 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                       const newType = e.target.value;
                       let updates = { type: newType };
                       if (newType === "true_false") {
-                        updates.options = [
-                          { letter: "T", text: "True" },
-                          { letter: "F", text: "False" },
-                        ];
+                        // Create 4 options (A, B, C, D) for true/false questions
+                        if (question.options?.length >= 4) {
+                          // Preserve existing option text, just ensure we have 4 options
+                          updates.options = question.options.slice(0, 4).map((opt, idx) => ({
+                            letter: String.fromCharCode(65 + idx), // A, B, C, D
+                            text: opt.text || "",
+                          }));
+                        } else {
+                          updates.options = [
+                            { letter: "A", text: "" },
+                            { letter: "B", text: "" },
+                            { letter: "C", text: "" },
+                            { letter: "D", text: "" },
+                          ];
+                        }
                         updates.correctAnswer = [];
                       } else if (newType === "text_input") {
                         updates.options = [];
@@ -2825,7 +3006,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                               >
                                 {option.text || (
                                   <span className="opacity-40 italic">
-                                    No text
+                                    {t(language === "vi" ? "noTextVi" : "noText")}
                                   </span>
                                 )}
                               </span>
@@ -2840,37 +3021,74 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                     )}
 
                     {question.type === "true_false" && (
-                      <div className="flex gap-2">
+                      <div className="space-y-3">
                         {question.options.map((option) => {
-                          const isCorrect = question.correctAnswer.includes(
+                          const isTrue = question.correctAnswer.includes(
                             option.letter,
                           );
                           return (
-                            <label
+                            <div
                               key={option.letter}
-                              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 cursor-pointer font-semibold text-sm transition-all select-none ${
-                                isCorrect
-                                  ? "border-red-500 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400"
+                              className={`flex items-center gap-3 p-3 rounded-xl border-2 ${
+                                isTrue
+                                  ? "border-red-500 bg-red-50 dark:bg-red-500/10"
                                   : theme === "dark"
-                                    ? "border-gray-700 hover:border-gray-500 text-gray-300"
-                                    : "border-gray-100 bg-slate-50 hover:border-gray-300 text-gray-600"
+                                    ? "border-gray-700 bg-gray-800"
+                                    : "border-gray-200 bg-white"
                               }`}
                             >
-                              <input
-                                type="radio"
-                                className="hidden"
-                                name={`correct-${question.id}`}
-                                value={option.letter}
-                                checked={isCorrect}
-                                onChange={(e) =>
-                                  updateQuestion(question.id, {
-                                    correctAnswer: [e.target.value],
-                                  })
-                                }
-                              />
-                              {isCorrect && <Check className="w-3.5 h-3.5" />}
-                              {option.text}
-                            </label>
+                              <span className="font-bold text-sm w-6">
+                                {option.letter})
+                              </span>
+                              <span className="flex-1 text-sm">
+                                {option.text || (
+                                  <span className="opacity-40 italic">
+                                    {t(language === "vi" ? "noTextVi" : "noText")}
+                                  </span>
+                                )}
+                              </span>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() =>
+                                    updateQuestion(question.id, {
+                                      correctAnswer: [
+                                        ...(question.correctAnswer || []).filter(
+                                          (a) => a !== option.letter,
+                                        ),
+                                        option.letter,
+                                      ],
+                                    })
+                                  }
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    isTrue
+                                      ? "bg-red-500 text-white"
+                                      : theme === "dark"
+                                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {t(language === "vi" ? "trueLabelVi" : "trueLabel")}
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    updateQuestion(question.id, {
+                                      correctAnswer: (question.correctAnswer || []).filter(
+                                        (a) => a !== option.letter,
+                                      ),
+                                    })
+                                  }
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    !isTrue
+                                      ? "bg-gray-500 text-white"
+                                      : theme === "dark"
+                                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {t(language === "vi" ? "falseLabelVi" : "falseLabel")}
+                                </button>
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -3040,22 +3258,24 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                           return (
                             <button
                               key={option.letter}
-                              onClick={() => {
-                                if (!currentTest.settings?.immediateFeedback) {
-                                  const curr = userAnswers[question.id] || [];
-                                  handleAnswerSelect(
-                                    question.id,
-                                    isSelected
-                                      ? curr.filter((a) => a !== option.letter)
-                                      : [...curr, option.letter].sort(),
-                                  );
-                                } else {
-                                  // Immediate feedback mode - single selection
-                                  handleAnswerSelect(question.id, [
-                                    option.letter,
-                                  ]);
-                                }
-                              }}
+                               onClick={(e) => {
+                                 e.preventDefault();
+                                 e.stopPropagation();
+                                 if (!currentTest.settings?.immediateFeedback) {
+                                   const curr = userAnswers[question.id] || [];
+                                   handleAnswerSelect(
+                                     question.id,
+                                     isSelected
+                                       ? curr.filter((a) => a !== option.letter)
+                                       : [...curr, option.letter].sort(),
+                                   );
+                                 } else {
+                                   // Immediate feedback mode - single selection
+                                   handleAnswerSelect(question.id, [
+                                     option.letter,
+                                   ]);
+                                 }
+                               }}
                               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all active:scale-[0.99] ${
                                 showFeedback
                                   ? isCorrect
@@ -3114,7 +3334,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                     </div>
                   )}
                   {question.type === "true_false" && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-3">
                       {(question.shuffledOptions || question.options).map(
                         (option) => {
                           const isSelected = (
@@ -3128,39 +3348,72 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                             isSelected;
 
                           return (
-                            <button
+                            <div
                               key={option.letter}
-                              onClick={() =>
-                                handleAnswerSelect(question.id, [option.letter])
-                              }
-                              className={`py-4 px-3 rounded-xl font-bold text-lg border-2 transition-all active:scale-95 ${
+                              className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
                                 showFeedback
                                   ? isCorrect
-                                    ? "border-green-500 bg-green-50 text-green-600 dark:bg-green-500/10 dark:text-green-400"
-                                    : "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                                    ? "border-green-500 bg-green-50 dark:bg-green-500/10"
+                                    : "border-red-500 bg-red-50 dark:bg-red-500/10"
                                   : isSelected
-                                    ? "border-red-500 bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                                    ? "border-red-500 bg-red-50 dark:bg-red-500/10"
                                     : theme === "dark"
-                                      ? "border-gray-700 bg-gray-800 text-gray-300 hover:border-gray-500"
-                                      : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
+                                      ? "border-gray-700 bg-gray-800 hover:border-gray-600"
+                                      : "border-gray-200 bg-white hover:border-gray-300"
                               }`}
                             >
-                              <span className="block">{option.letter}</span>
-                              {option.text && (
-                                <span className="block text-sm font-normal mt-1 opacity-90 break-words">
-                                  {option.text}
-                                </span>
-                              )}
-                              {showFeedback && (
-                                <div className="mt-2">
-                                  {isCorrect ? (
-                                    <Check className="w-5 h-5 text-green-500 mx-auto" />
-                                  ) : (
-                                    <X className="w-5 h-5 text-red-500 mx-auto" />
-                                  )}
-                                </div>
-                              )}
-                            </button>
+                              <span className="font-bold text-sm w-6">
+                                {option.letter})
+                              </span>
+                              <span className="flex-1 text-sm">
+                                {option.text || option.letter}
+                              </span>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleAnswerSelect(question.id, [
+                                      ...(userAnswers[question.id] || []).filter(
+                                        (a) => a !== option.letter,
+                                      ),
+                                      option.letter,
+                                    ]);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    isSelected && isCorrect
+                                      ? "bg-green-500 text-white"
+                                      : isSelected && !isCorrect && showFeedback
+                                        ? "bg-red-500 text-white"
+                                        : isSelected
+                                          ? "bg-red-500 text-white"
+                                          : theme === "dark"
+                                            ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {t(language === "vi" ? "trueLabelVi" : "trueLabel")}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleAnswerSelect(question.id, (userAnswers[question.id] || []).filter(
+                                      (a) => a !== option.letter,
+                                    ));
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    !isSelected
+                                      ? "bg-gray-500 text-white"
+                                      : theme === "dark"
+                                        ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  }`}
+                                >
+                                  {t(language === "vi" ? "falseLabelVi" : "falseLabel")}
+                                </button>
+                              </div>
+                            </div>
                           );
                         },
                       )}
@@ -3174,7 +3427,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                       onChange={(e) =>
                         handleAnswerSelect(question.id, e.target.value)
                       }
-                      placeholder="Type answer here..."
+                      placeholder={t(language === "vi" ? "typeAnswerHereVi" : "typeAnswerHere")}
                       className={`w-full p-4 text-lg rounded-xl border-2 focus:ring-0 focus:border-red-500 transition-colors ${
                         theme === "dark"
                           ? "bg-gray-800 border-gray-700 text-white placeholder-gray-500"
@@ -3318,7 +3571,11 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                     {question.options.map((option) => (
                       <button
                         key={option.letter}
-                        onClick={() => setRapidAnswer([option.letter])}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setRapidAnswer([option.letter]);
+                        }}
                         className={`p-4 rounded-xl border-2 text-left transition-all ${
                           (rapidAnswer || []).includes(option.letter)
                             ? "border-red-500 bg-red-50 dark:bg-red-500/10"
@@ -3347,22 +3604,72 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                 )}
 
                 {question.type === "true_false" && (
-                  <div className="grid grid-cols-2 gap-4">
-                    {question.options.map((option) => (
-                      <button
-                        key={option.letter}
-                        onClick={() => setRapidAnswer([option.letter])}
-                        className={`p-6 rounded-xl border-2 font-bold text-lg transition-all ${
-                          (rapidAnswer || []).includes(option.letter)
-                            ? "border-red-500 bg-red-50 dark:bg-red-500/10"
-                            : theme === "dark"
-                              ? "border-gray-700 bg-gray-800 hover:border-gray-600"
-                              : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}
-                      >
-                        {option.text}
-                      </button>
-                    ))}
+                  <div className="space-y-3">
+                    {question.options.map((option) => {
+                      const isSelected = (rapidAnswer || []).includes(
+                        option.letter,
+                      );
+                      return (
+                        <div
+                          key={option.letter}
+                          className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                            isSelected
+                              ? "border-red-500 bg-red-50 dark:bg-red-500/10"
+                              : theme === "dark"
+                                ? "border-gray-700 bg-gray-800 hover:border-gray-600"
+                                : "border-gray-200 bg-white hover:border-gray-300"
+                          }`}
+                        >
+                          <span className="font-bold text-sm w-6">
+                            {option.letter})
+                          </span>
+                          <span className="flex-1 text-sm">
+                            {option.text}
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setRapidAnswer([
+                                  ...(rapidAnswer || []).filter(
+                                    (a) => a !== option.letter,
+                                  ),
+                                  option.letter,
+                                ]);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                isSelected
+                                  ? "bg-red-500 text-white"
+                                  : theme === "dark"
+                                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                            >
+                              True
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setRapidAnswer((rapidAnswer || []).filter(
+                                  (a) => a !== option.letter,
+                                ));
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                !isSelected
+                                  ? "bg-gray-500 text-white"
+                                  : theme === "dark"
+                                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                            >
+                              False
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 

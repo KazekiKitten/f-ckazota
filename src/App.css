@@ -185,3 +185,40 @@
     0 0 20px rgba(59, 130, 246, 0.6),
     0 0 30px rgba(59, 130, 246, 0.4);
 }
+
+/* Mobile scroll prevention fixes */
+@media (max-width: 768px) {
+  /* Prevent double-tap zoom and unwanted scrolling on button taps */
+  button, .cursor-pointer, [role="button"] {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Prevent scroll jumping on focus */
+  button:focus, .cursor-pointer:focus, [role="button"]:focus {
+    outline: none;
+    scroll-behavior: auto;
+  }
+
+  /* Ensure buttons don't cause page jumps */
+  button:active, .cursor-pointer:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Additional mobile fixes */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent momentum scrolling issues */
+  html, body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+}
