@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import * as mammoth from "mammoth";
+import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { db } from './firebase.js';
 
 // Language context and translations
 const LanguageContext = React.createContext();
@@ -300,7 +302,10 @@ const translations = {
 
 // Language provider component
 const LanguageProvider = ({ children }) => {
-  const [language, setLanguage] = useState("vi");
+  const [language, setLanguage] = useState(() => {
+    const saved = localStorage.getItem("azota-language");
+    return (saved && ["vi", "en"].includes(saved)) ? saved : "vi";
+  });
 
   const t = (key) => {
     return translations[language]?.[key] || translations.en[key] || key;
@@ -312,11 +317,6 @@ const LanguageProvider = ({ children }) => {
     localStorage.setItem("azota-language", newLang);
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem("azota-language");
-    if (saved && ["vi", "en"].includes(saved)) setLanguage(saved);
-  }, []);
-
   return (
     <LanguageContext.Provider value={{ language, t, toggleLanguage }}>
       {children}
@@ -326,7 +326,17 @@ const LanguageProvider = ({ children }) => {
 
 // Theme provider component
 const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("azota-theme");
+    if (saved && ["light", "dark"].includes(saved)) {
+      document.documentElement.classList.toggle("dark", saved === "dark");
+      return saved;
+    } else {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", prefersDark);
+      return prefersDark ? "dark" : "light";
+    }
+  });
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
@@ -334,20 +344,6 @@ const ThemeProvider = ({ children }) => {
     localStorage.setItem("azota-theme", newTheme);
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
-
-  useEffect(() => {
-    const saved = localStorage.getItem("azota-theme");
-    if (saved && ["light", "dark"].includes(saved)) {
-      setTheme(saved);
-      document.documentElement.classList.toggle("dark", saved === "dark");
-    } else {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
-      setTheme(prefersDark ? "dark" : "light");
-      document.documentElement.classList.toggle("dark", prefersDark);
-    }
-  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
@@ -1639,6 +1635,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   };
 
   const shareTest = async (test) => {
+    const now = Date.now();
+    const lastShare = localStorage.getItem("azota-last-share");
+    if (lastShare && now - parseInt(lastShare) < 30000) { // 30 seconds
+      alert("Please wait 30 seconds before sharing another test.");
+      return;
+    }
+    localStorage.setItem("azota-last-share", now.toString());
     const code = generateShareCode();
     const sharedTest = {
       ...test,
@@ -1646,12 +1649,20 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         ...q,
         image: q.image ? "[image]" : q.image, // Strip base64 images
       })),
+      createdAt: new Date().toISOString(),
     };
     try {
-      // Use localStorage for now; for cross-user sharing, a server is needed
-      localStorage.setItem(`share:${code}`, JSON.stringify(sharedTest));
+      await setDoc(doc(db, 'sharedTests', code), sharedTest);
       setShareCode(code);
       setShowShareModal(true);
+      // Delete after 5 minutes
+      setTimeout(async () => {
+        try {
+          await deleteDoc(doc(db, 'sharedTests', code));
+        } catch (e) {
+          // Ignore
+        }
+      }, 5 * 60 * 1000);
     } catch (error) {
       alert("Failed to share test: " + error.message);
     }
@@ -1661,13 +1672,19 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     const code = importCode.toUpperCase().trim();
     if (!code) return;
     try {
-      // Use localStorage for now
-      const dataStr = localStorage.getItem(`share:${code}`);
-      if (!dataStr) {
+      const docSnap = await getDoc(doc(db, 'sharedTests', code));
+      if (!docSnap.exists()) {
         alert("Code not found or expired");
         return;
       }
-      const data = JSON.parse(dataStr);
+      const data = docSnap.data();
+      const createdAt = new Date(data.createdAt);
+      const now = new Date();
+      if (now - createdAt > 5 * 60 * 1000) {
+        await deleteDoc(doc(db, 'sharedTests', code));
+        alert("Code expired");
+        return;
+      }
       const newTest = {
         ...data,
         id: Date.now(),
@@ -2104,9 +2121,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     if (!audioContext)
       setAudioContext(new (window.AudioContext || window.webkitAudioContext)());
   };
-  const playSound = (freq, dur, type = "sine", vol = 0.1) => {
-    if (!soundEnabled || !audioContext) return;
+  const playSound = async (freq, dur, type = "sine", vol = 0.1) => {
+    if (!soundEnabled) return;
+    if (!audioContext) {
+      initAudioContext();
+      if (!audioContext) return;
+    }
     try {
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
       const osc = audioContext.createOscillator();
       const gain = audioContext.createGain();
       osc.connect(gain);
@@ -2154,69 +2178,18 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     localStorage.setItem("azota-sound-enabled", !soundEnabled);
   };
 
-  const Header = () => (
-    <div
-      className={`sticky top-0 z-50 transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-        <div
-          className="flex items-center gap-2 cursor-pointer"
-          onClick={() => setCurrentPage("home")}
-        >
-          <Zap
-            className={`w-6 h-6 ${theme === "dark" ? "text-red-500" : "text-red-600"}`}
-            fill="currentColor"
-          />
-          <h1
-            className={`text-xl lg:text-2xl font-black tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-          >
-            F*ck
-            <span
-              className={theme === "dark" ? "text-red-500" : "text-red-600"}
-            >
-              Azota
-            </span>
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 md:gap-3">
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-xl transition-all ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
-          >
-            {theme === "light" ? (
-              <Moon className="w-5 h-5" />
-            ) : (
-              <Sun className="w-5 h-5" />
-            )}
-          </button>
-          <button
-            onClick={toggleLanguage}
-            className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-600 hover:text-gray-900"}`}
-          >
-            <Globe className="w-5 h-5" />{" "}
-            <span className="hidden sm:block">{language.toUpperCase()}</span>
-          </button>
-          <button
-            onClick={toggleSound}
-            className={`p-2 rounded-xl transition-all ${soundEnabled ? (theme === "dark" ? "text-red-400 bg-red-900/20" : "text-red-600 bg-red-50") : theme === "dark" ? "text-gray-500 bg-gray-800" : "text-gray-400 bg-slate-50"}`}
-          >
-            {soundEnabled ? "🔊" : "🔇"}
-          </button>
-          <button
-            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-            className={`p-2 rounded-xl transition-all ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
-            title={t("enterGeminiKey")}
-          >
-            <Brain className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+
 
   if (currentPage === "pdf-mode-select" && editingTest) {
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
@@ -2398,6 +2371,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   if (currentPage === "image-mode-select" && editingTest) {
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
@@ -2550,6 +2530,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     const currentPageImg = editingTest.pages[cropState.currentPageIndex];
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
@@ -2737,6 +2724,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   if (currentPage === "home") {
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
@@ -3157,6 +3151,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   if (currentPage === "edit" && editingTest) {
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
@@ -4055,6 +4056,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     const isPassed = testResults.score >= 5;
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
@@ -4121,9 +4129,9 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         className={`min-h-screen ${theme === "dark" ? "bg-[#0f1115] text-gray-300" : "bg-slate-50 text-gray-800"} transition-colors duration-300 font-sans`}
       >
         {/* Header */}
-        <div
-          className={`sticky top-0 z-50 transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
-        >
+    <div
+      className={`sticky top-0 z-[60] transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
+    >
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Zap className="w-6 h-6 text-orange-500" />
@@ -4339,6 +4347,13 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         : 0;
     return (
       <PageWrapper
+        showApiKeyInput={showApiKeyInput}
+        setShowApiKeyInput={setShowApiKeyInput}
+        geminiApiKey={geminiApiKey}
+        setGeminiApiKey={setGeminiApiKey}
+        soundEnabled={soundEnabled}
+        toggleSound={toggleSound}
+        setCurrentPage={setCurrentPage}
         shareCode={shareCode}
         showShareModal={showShareModal}
         setShowShareModal={setShowShareModal}
