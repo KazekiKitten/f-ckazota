@@ -21,6 +21,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import * as mammoth from "mammoth";
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase.js';
+import pako from 'pako';
 
 // Language context and translations
 const LanguageContext = React.createContext();
@@ -373,7 +374,7 @@ const Button = ({
 }) => {
   const { theme } = React.useContext(ThemeContext);
   const base =
-    "inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation text-base";
   const variants = {
     primary: `bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow active:scale-95`,
     secondary:
@@ -424,9 +425,9 @@ const Header = ({
     <div
       className={`sticky top-0 z-50 transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
         <div
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-2 cursor-pointer touch-manipulation"
           onClick={() => setCurrentPage("home")}
         >
           <Zap
@@ -434,7 +435,7 @@ const Header = ({
             fill="currentColor"
           />
           <h1
-            className={`text-xl lg:text-2xl font-black tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+            className={`text-lg sm:text-xl lg:text-2xl font-black tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}
           >
             F*ck
             <span
@@ -444,10 +445,10 @@ const Header = ({
             </span>
           </h1>
         </div>
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-xl transition-all ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
+            className={`p-3 rounded-xl transition-all touch-manipulation min-w-[44px] min-h-[44px] ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
           >
             {theme === "light" ? (
               <Moon className="w-5 h-5" />
@@ -457,20 +458,20 @@ const Header = ({
           </button>
           <button
             onClick={toggleLanguage}
-            className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-600 hover:text-gray-900"}`}
+            className={`px-3 py-2 rounded-xl flex items-center gap-2 transition-all font-semibold text-sm touch-manipulation min-h-[44px] ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-600 hover:text-gray-900"}`}
           >
             <Globe className="w-5 h-5" />{" "}
             <span className="hidden sm:block">{language.toUpperCase()}</span>
           </button>
           <button
             onClick={toggleSound}
-            className={`p-2 rounded-xl transition-all ${soundEnabled ? (theme === "dark" ? "text-red-400 bg-red-900/20" : "text-red-600 bg-red-50") : theme === "dark" ? "text-gray-500 bg-gray-800" : "text-gray-400 bg-slate-50"}`}
+            className={`p-3 rounded-xl transition-all touch-manipulation min-w-[44px] min-h-[44px] ${soundEnabled ? (theme === "dark" ? "text-red-400 bg-red-900/20" : "text-red-600 bg-red-50") : theme === "dark" ? "text-gray-500 bg-gray-800" : "text-gray-400 bg-slate-50"}`}
           >
             {soundEnabled ? "🔊" : "🔇"}
           </button>
           <button
             onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-            className={`p-2 rounded-xl transition-all ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
+            className={`p-3 rounded-xl transition-all touch-manipulation min-w-[44px] min-h-[44px] ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
           >
             <Brain className="w-5 h-5" />
           </button>
@@ -523,145 +524,151 @@ const PageWrapper = ({
         setCurrentPage={setCurrentPage}
       />
       {showApiKeyInput && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="max-w-md w-full mx-4 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3
-                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-              >
-                {t("enterGeminiKey")}
-              </h3>
-              <button
-                onClick={() => setShowApiKeyInput(false)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                >
+                  {t("enterGeminiKey")}
+                </h3>
+                <button
+                  onClick={() => setShowApiKeyInput(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <input
+                type="password"
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+                placeholder={t("geminiKeyPlaceholder")}
+                className={`w-full p-4 rounded-lg border mb-4 text-base ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+              />
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowApiKeyInput(false)}
+                  className="flex-1 py-3 px-6 text-base touch-manipulation"
+                >
+                  {t("cancel")}
+                </Button>
+                <Button onClick={saveGeminiApiKey} className="flex-1 py-3 px-6 text-base touch-manipulation">
+                  {t("saveApiKey")}
+                </Button>
+              </div>
+              {geminiApiKey && (
+                <p className="text-sm mt-3 text-green-500 flex items-center gap-1">
+                  <Check className="w-4 h-4" /> {t("apiKeySaved")}
+                </p>
+              )}
             </div>
-            <input
-              type="password"
-              value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-              placeholder={t("geminiKeyPlaceholder")}
-              className={`w-full p-3 rounded-lg border mb-4 ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setShowApiKeyInput(false)}
-                className="flex-1"
-              >
-                {t("cancel")}
-              </Button>
-              <Button onClick={saveGeminiApiKey} className="flex-1">
-                {t("saveApiKey")}
-              </Button>
-            </div>
-            {geminiApiKey && (
-              <p className="text-xs mt-3 text-green-500 flex items-center gap-1">
-                <Check className="w-3 h-3" /> {t("apiKeySaved")}
-              </p>
-            )}
           </Card>
         </div>
       )}
 
       {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="max-w-md w-full mx-4 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3
-                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-              >
-                {t("shareTest")}
-              </h3>
-              <button
-                onClick={() => setShowShareModal(false)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="text-center mb-4">
-              <div
-                className={`text-4xl font-mono font-black tracking-widest mb-2 ${theme === "dark" ? "text-red-400" : "text-red-600"}`}
-              >
-                {shareCode}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                >
+                  {t("shareTest")}
+                </h3>
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <p className="text-sm opacity-70 mb-4">
-                Share this code with others on the same device. Image-based
-                questions won't transfer.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(shareCode);
-                  alert("Code copied to clipboard!");
-                }}
-                className="flex-1"
-              >
-                Copy
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setShowShareModal(false)}
-                className="flex-1"
-              >
-                Done
-              </Button>
+              <div className="text-center mb-6">
+                <div
+                  className={`text-3xl sm:text-4xl font-mono font-black tracking-widest mb-3 p-4 rounded-lg ${theme === "dark" ? "bg-gray-800 text-red-400" : "bg-gray-50 text-red-600"}`}
+                >
+                  {shareCode}
+                </div>
+                <p className="text-sm opacity-70 mb-4">
+                  Share this code with others on the same device. Image-based
+                  questions won't transfer.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareCode);
+                    alert("Code copied to clipboard!");
+                  }}
+                  className="flex-1 py-3 px-6 text-base touch-manipulation"
+                >
+                  Copy
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowShareModal(false)}
+                  className="flex-1 py-3 px-6 text-base touch-manipulation"
+                >
+                  Done
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
       )}
 
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="max-w-md w-full mx-4 p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3
-                className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-              >
-                {t("importByCode")}
-              </h3>
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="text-center mb-4">
-              <input
-                type="text"
-                value={importCode}
-                onChange={(e) => setImportCode(e.target.value.toUpperCase())}
-                maxLength={6}
-                placeholder="Enter 6-char code"
-                className={`w-full text-center text-2xl font-mono font-bold tracking-widest p-4 rounded-lg border ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setShowImportModal(false)}
-                className="flex-1"
-              >
-                {t("cancel")}
-              </Button>
-              <Button
-                onClick={importByCode}
-                disabled={importCode.length !== 6}
-                className="flex-1"
-              >
-                Import
-              </Button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3
+                  className={`text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                >
+                  {t("importByCode")}
+                </h3>
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg touch-manipulation"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="text-center mb-6">
+                <input
+                  type="text"
+                  value={importCode}
+                  onChange={(e) => setImportCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  placeholder="Enter 6-char code"
+                  className={`w-full text-center text-2xl font-mono font-bold tracking-widest p-4 rounded-lg border text-base ${theme === "dark" ? "bg-gray-900 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-900"}`}
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowImportModal(false)}
+                  className="flex-1 py-3 px-6 text-base touch-manipulation"
+                >
+                  {t("cancel")}
+                </Button>
+                <Button
+                  onClick={importByCode}
+                  disabled={importCode.length !== 6}
+                  className="flex-1 py-3 px-6 text-base touch-manipulation"
+                >
+                  Import
+                </Button>
+              </div>
             </div>
           </Card>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 animate-in fade-in duration-300">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 animate-in fade-in duration-300">
         {children}
       </div>
     </div>
@@ -688,6 +695,8 @@ const VisualTestPlatform = () => {
   });
   const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
   const [imageZoomLevel, setImageZoomLevel] = useState(1);
+  const [touchStartDistance, setTouchStartDistance] = useState(0);
+  const [touchStartZoom, setTouchStartZoom] = useState(1);
 
   const [rapidTestMode, setRapidTestMode] = useState(false);
   const [rapidCurrentQuestion, setRapidCurrentQuestion] = useState(null);
@@ -810,10 +819,13 @@ const VisualTestPlatform = () => {
     };
   }, []);
 
-  const handleCropMouseDown = (e, imgRef) => {
+  const handleCropStart = (e, imgRef) => {
+    e.preventDefault();
     const rect = imgRef.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = (clientX - rect.left) / rect.width;
+    const y = (clientY - rect.top) / rect.height;
     setCropState({
       ...cropState,
       isSelecting: true,
@@ -822,15 +834,18 @@ const VisualTestPlatform = () => {
     });
   };
 
-  const handleCropMouseMove = (e, imgRef) => {
+  const handleCropMove = (e, imgRef) => {
     if (!cropState.isSelecting) return;
+    e.preventDefault();
     const rect = imgRef.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = (clientX - rect.left) / rect.width;
+    const y = (clientY - rect.top) / rect.height;
     setCropState({ ...cropState, currentPos: { x, y } });
   };
 
-  const handleCropMouseUp = async (imgRef) => {
+  const handleCropEnd = async (imgRef) => {
     if (!cropState.isSelecting || !cropState.startPos || !cropState.currentPos)
       return;
     const { startPos, currentPos } = cropState;
@@ -1670,14 +1685,22 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     const code = generateShareCode();
     const sharedTest = {
       ...test,
+      pages: [], // Remove pages to save space
       questions: test.questions.map((q) => ({
         ...q,
-        image: q.image ? "[image]" : q.image, // Strip base64 images
+        image: q.image ? "[image]" : null, // Strip base64 images
       })),
       createdAt: new Date().toISOString(),
     };
     try {
-      await setDoc(doc(db, 'sharedTests', code), sharedTest);
+      // Compress the test data
+      const jsonString = JSON.stringify(sharedTest);
+      const compressed = pako.gzip(jsonString);
+      const base64Compressed = btoa(String.fromCharCode(...compressed));
+      await setDoc(doc(db, 'sharedTests', code), {
+        data: base64Compressed,
+        createdAt: new Date().toISOString(),
+      });
       setShareCode(code);
       setShowShareModal(true);
       // Delete after 5 minutes
@@ -1710,10 +1733,15 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         alert("Code expired");
         return;
       }
+      // Decompress the test data
+      const compressedData = atob(data.data);
+      const compressedBytes = new Uint8Array(compressedData.split('').map(c => c.charCodeAt(0)));
+      const decompressed = pako.ungzip(compressedBytes, { to: 'string' });
+      const testData = JSON.parse(decompressed);
       const newTest = {
-        ...data,
+        ...testData,
         id: Date.now(),
-        name: `${data.name} (Imported)`,
+        name: `${testData.name} (Imported)`,
         createdAt: new Date().toLocaleDateString(),
       };
       setTests([...tests, newTest]);
@@ -2044,6 +2072,32 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     setImageZoomLevel((prev) => Math.max(prev - 0.25, 0.5));
   const resetImageSize = () => setImageZoomLevel(1);
 
+  const getTouchDistance = (touches) => {
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    return Math.sqrt(
+      Math.pow(touch2.clientX - touch1.clientX, 2) +
+      Math.pow(touch2.clientY - touch1.clientY, 2)
+    );
+  };
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      setTouchStartDistance(getTouchDistance(e.touches));
+      setTouchStartZoom(imageZoomLevel);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / touchStartDistance;
+      const newZoom = Math.min(Math.max(touchStartZoom * scale, 0.5), 3);
+      setImageZoomLevel(newZoom);
+    }
+  };
+
   const startRapidTest = (test) => {
     if (window.achievementTimeout) clearTimeout(window.achievementTimeout);
     const questions = test.questions.filter((q) => q.type !== "none");
@@ -2264,7 +2318,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
             </div>
           )}
 
-          <div className="grid md:grid-cols-3 gap-6 mb-10 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 text-left">
             <button
               onClick={() => {
                 playClickSound();
@@ -2452,7 +2506,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-6 mb-10 text-left">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8 sm:mb-10 text-left">
             <button
               onClick={() => {
                 playClickSound();
@@ -2661,22 +2715,25 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6">
           <Card className="xl:col-span-2 p-6">
             <h3
               className={`font-bold mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
             >
               {t("currentPage")}
             </h3>
-            <div className="relative inline-block w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden cursor-crosshair">
+            <div className="relative inline-block w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden cursor-crosshair touch-none">
               <img
                 ref={imgRef}
                 src={currentPageImg}
                 alt="Page"
                 className="w-full block"
-                onMouseDown={(e) => handleCropMouseDown(e, imgRef.current)}
-                onMouseMove={(e) => handleCropMouseMove(e, imgRef.current)}
-                onMouseUp={() => handleCropMouseUp(imgRef.current)}
+                onMouseDown={(e) => handleCropStart(e, imgRef.current)}
+                onMouseMove={(e) => handleCropMove(e, imgRef.current)}
+                onMouseUp={() => handleCropEnd(imgRef.current)}
+                onTouchStart={(e) => handleCropStart(e, imgRef.current)}
+                onTouchMove={(e) => handleCropMove(e, imgRef.current)}
+                onTouchEnd={() => handleCropEnd(imgRef.current)}
                 draggable={false}
               />
               {cropState.isSelecting &&
@@ -2783,7 +2840,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
         )}
 
         <div className="mb-16">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
               {
                 id: "pdf-input",
@@ -3273,7 +3330,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
           >
             {t("testSettings")}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <label
               className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                 editingTest.settings?.immediateFeedback
@@ -3370,7 +3427,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {editingTest.questions.map((question) => (
             <Card key={question.id} className="flex flex-col overflow-visible">
               {/* Card header */}
@@ -3753,7 +3810,24 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                   : `${answeredQuestions.size}/${currentTest.questions.length} Completed`}
               </span>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex sm:hidden items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={decreaseImageSize}
+                  className="px-3 py-2 hover:bg-white dark:hover:bg-gray-700 rounded shadow-sm text-base font-bold touch-manipulation min-w-[44px]"
+                >
+                  -
+                </button>
+                <span className="px-2 text-sm font-bold">
+                  {Math.round(imageZoomLevel * 100)}%
+                </span>
+                <button
+                  onClick={increaseImageSize}
+                  className="px-3 py-2 hover:bg-white dark:hover:bg-gray-700 rounded shadow-sm text-base font-bold touch-manipulation min-w-[44px]"
+                >
+                  +
+                </button>
+              </div>
               <div className="hidden sm:flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                 <button
                   onClick={decreaseImageSize}
@@ -3835,12 +3909,14 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
                   <img
                     src={question.image}
                     alt="Q"
-                    className="w-full border border-gray-100"
+                    className="w-full border border-gray-100 touch-manipulation"
                     style={{
                       transform: `scale(${imageZoomLevel})`,
                       transformOrigin: "top left",
                       maxWidth: imageZoomLevel > 1 ? "none" : "100%",
                     }}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
                   />
                 </div>
               )}
