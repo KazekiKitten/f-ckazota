@@ -752,25 +752,50 @@ const VisualTestPlatform = () => {
   const ParticleEffect = ({ isVisible }) => {
     if (!isVisible) return null;
     const particles = [];
-    const colors = ["#dc2626", "#ef4444", "#f87171", "#fca5a5"]; // Red themed confetti
+    const colors = ["#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fbbf24", "#f59e0b", "#d97706", "#b45309"]; // Red and gold themed confetti
+    const emojis = ["💰", "⭐", "🎉", "🔥", "⚡"];
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 50; i++) {
+      const isEmoji = Math.random() < 0.2; // 20% chance for emoji particles
+      const size = isEmoji ? (2 + Math.random() * 2) : (1 + Math.random() * 3); // 1-3px for colors, 2-4 for emojis
+      const animationType = Math.random() < 0.5 ? "fall" : Math.random() < 0.5 ? "spin" : "ping";
+      const duration = 2 + Math.random() * 2; // 2-4 seconds
+
       particles.push(
         <div
           key={i}
-          className="absolute w-2 h-2 rounded-full pointer-events-none"
+          className={`absolute pointer-events-none ${isEmoji ? "flex items-center justify-center text-xl" : "rounded-full"}`}
           style={{
             left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            background: colors[Math.floor(Math.random() * colors.length)],
-            animation: `ping ${1 + Math.random()}s cubic-bezier(0, 0, 0.2, 1) infinite`,
+            top: `${-10 + Math.random() * 20}%`, // Start slightly above screen
+            width: `${size}px`,
+            height: `${size}px`,
+            background: isEmoji ? "transparent" : colors[Math.floor(Math.random() * colors.length)],
+            color: isEmoji ? emojis[Math.floor(Math.random() * emojis.length)] : "transparent",
+            animation: `${animationType} ${duration}s ease-out forwards`,
             animationDelay: `${Math.random() * 0.5}s`,
+            fontSize: isEmoji ? `${size * 8}px` : "inherit", // Scale emoji size
           }}
         />,
       );
     }
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <style>{`
+          @keyframes fall {
+            0% { transform: translateY(0px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); opacity: 1; }
+            50% { transform: rotate(180deg) scale(1.2); opacity: 0.8; }
+            100% { transform: rotate(360deg) scale(0.8); opacity: 0; }
+          }
+          @keyframes ping {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+          }
+        `}</style>
         {particles}
       </div>
     );
@@ -2083,7 +2108,7 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
       setRapidScore((p) => p + 1);
       setShowParticleEffect(true);
       playCorrectSound();
-      setTimeout(() => setShowParticleEffect(false), 2000);
+      setTimeout(() => setShowParticleEffect(false), 4000);
     } else playIncorrectSound();
     setRapidAnsweredQuestions((p) => new Set([...p, rapidCurrentQuestion.id]));
   };
@@ -2150,8 +2175,9 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
   const playClickSound = () => playSound(800, 0.1, "sine", 0.05);
   const playHoverSound = () => playSound(600, 0.05, "sine", 0.02);
   const playCorrectSound = () => {
-    [523, 659, 784].forEach((f, i) =>
-      setTimeout(() => playSound(f, 0.3, "sine", 0.1), i * 100),
+    // Gambling-style winning sound: ascending chime with triangle wave for bell-like effect
+    [600, 800, 1000, 1200, 1500].forEach((f, i) =>
+      setTimeout(() => playSound(f, 0.2, "triangle", 0.15), i * 80),
     );
   };
   const playIncorrectSound = () => {
