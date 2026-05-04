@@ -1443,7 +1443,7 @@ IMPORTANT: Extract ALL questions you can see on this page. Extract the FULL TEXT
                 {
                   parts: [
                     {
-                      text: `Analyze this exam/quiz image and extract ALL questions with their FULL TEXT CONTENT, options with their FULL ANSWER TEXT, and correct answers.
+                      text: `Analyze this exam/quiz image and extract ALL questions with their FULL TEXT CONTENT, options with their FULL ANSWER TEXT, and correct answers. Sometimes different questions could be split into different pages/images but is still apart of the question so take it into account
 
 CRITICAL INSTRUCTIONS:
 1. Extract the COMPLETE question text - include all text, context, passages, formulas, or descriptions that are part of the question
