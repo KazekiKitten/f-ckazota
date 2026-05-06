@@ -425,7 +425,7 @@ const Header = ({
     <div
       className={`sticky top-0 z-50 transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div
           className="flex items-center gap-2 cursor-pointer touch-manipulation"
           onClick={() => setCurrentPage("home")}
@@ -435,9 +435,9 @@ const Header = ({
             fill="currentColor"
           />
           <h1
-            className={`text-lg sm:text-xl lg:text-2xl font-black tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+            className={`text-base sm:text-lg lg:text-xl font-black tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}
           >
-            F*ck
+            F*
             <span
               className={theme === "dark" ? "text-red-500" : "text-red-600"}
             >
@@ -445,7 +445,7 @@ const Header = ({
             </span>
           </h1>
         </div>
-        <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-center sm:justify-end">
           <button
             onClick={toggleTheme}
             className={`p-3 rounded-xl transition-all touch-manipulation min-w-[44px] min-h-[44px] ${theme === "dark" ? "bg-gray-800 text-gray-300 hover:text-white" : "bg-slate-50 text-gray-500 hover:text-gray-900"}`}
@@ -671,6 +671,13 @@ const PageWrapper = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 animate-in fade-in duration-300">
         {children}
       </div>
+
+      {/* BEGIN AADS AD UNIT 2436833 */}
+      <div id="frame" style={{width: '100%', margin: 'auto', position: 'relative', zIndex: 99998}}>
+        <iframe data-aa='2436833' src='//acceptable.a-ads.com/2436833/?size=Adaptive'
+          style={{border: 0, padding: 0, width: '70%', height: 'auto', overflow: 'hidden', display: 'block', margin: 'auto'}}></iframe>
+      </div>
+      {/* END AADS AD UNIT 2436833 */}
     </div>
   );
 };
@@ -4234,16 +4241,16 @@ IMPORTANT: Extract ALL questions you can see in this image. Extract the FULL TEX
     <div
       className={`sticky top-0 z-[60] transition-colors duration-300 ${theme === "dark" ? "bg-gray-900 border-gray-800" : "bg-white border-gray-100 shadow-sm"} border-b`}
     >
-          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
               <Zap className="w-6 h-6 text-orange-500" />
               <h1
-                className={`text-xl font-black ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                className={`text-lg sm:text-xl font-black ${theme === "dark" ? "text-white" : "text-gray-900"}`}
               >
                 {t("rapidTestMode")}
               </h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <div
                 className={`px-3 py-1 rounded-lg font-bold text-sm ${theme === "dark" ? "bg-gray-800 text-orange-400" : "bg-orange-50 text-orange-600"}`}
               >
