@@ -1,20 +1,41 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { firebaseConfig } from "./lib/firebaseConfig";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+let appPromise = null;
+
+const getApp = () => {
+  appPromise ??= (async () => {
+    const [{ initializeApp }, { getFirestore }] = await Promise.all([
+      import("firebase/app"),
+      import("firebase/firestore"),
+    ]);
+    const app = initializeApp(firebaseConfig);
+    return { app, getFirestore };
+  })();
+  return appPromise;
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let dbPromise = null;
 
-// Initialize Firestore
-export const db = getFirestore(app);
+// The Firebase SDK is only ever loaded through these lazy accessors, keeping
+// it out of the startup bundle until auth or sync actually needs it.
+
+export const getDb = () => {
+  dbPromise ??= (async () => {
+    const { app, getFirestore } = await getApp();
+    return getFirestore(app);
+  })();
+  return dbPromise;
+};
+
+let authPromise = null;
+
+export const getAuthInstance = () => {
+  authPromise ??= (async () => {
+    const [{ getAuth, GoogleAuthProvider }, { app }] = await Promise.all([
+      import("firebase/auth"),
+      getApp(),
+    ]);
+    return { auth: getAuth(app), GoogleAuthProvider };
+  })();
+  return authPromise;
+};
