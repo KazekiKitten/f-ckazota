@@ -133,6 +133,29 @@ export const downloadSecrets = async (uid, passphrase) => {
   return { data, updatedAt: updatedAt?.toMillis?.() || null };
 };
 
+// Reads a doc the rules must permit. Returns "denied" when the security
+// rules are missing or too strict, so the UI can explain the fix. Firebase
+// reports this as a code on some paths and as a sentence on others.
+export const checkRulesAccess = async (uid) => {
+  try {
+    const { doc, getDoc, db } = await getFirestore();
+    await getDoc(doc(db, PREFS_COLLECTION, uid));
+    return "ok";
+  } catch (error) {
+    const text = `${error?.code || ""} ${error?.message || ""}`.toLowerCase();
+    if (
+      text.includes("permission-denied") ||
+      text.includes("permission_denied") ||
+      text.includes("insufficient permissions") ||
+      text.includes("missing or insufficient")
+    ) {
+      return "denied";
+    }
+    if (text.includes("unavailable")) return "offline";
+    return "unknown";
+  }
+};
+
 // Preferences are non-sensitive, so they sync in plaintext
 export const uploadPrefs = async (uid, prefs) => {
   const { doc, setDoc, serverTimestamp, db } = await getFirestore();

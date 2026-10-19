@@ -1,4 +1,4 @@
-import { Moon, Sun, Globe, Volume2, VolumeX, Settings, User } from "lucide-react";
+import { Moon, Sun, Globe, Volume2, VolumeX, Settings, User, Monitor } from "lucide-react";
 import { useTheme } from "../context/themeContext";
 import { useLanguage } from "../context/languageContext";
 import { useSound } from "../context/soundContext";
@@ -6,7 +6,7 @@ import { useAppUI } from "../context/appUI";
 import { useAuth } from "../context/authContext";
 
 const Header = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { themeId, dark, toggleThemeId, toggleDark } = useTheme();
   const { language, toggleLanguage } = useLanguage();
   const { soundEnabled, toggleSound } = useSound();
   const { currentPage, setCurrentPage, openSettings } = useAppUI();
@@ -87,14 +87,25 @@ const Header = () => {
             </button>
           )}
           <button
-            onClick={toggleTheme}
+            onClick={() => {
+              if (themeId === "slate") toggleDark();
+              else toggleThemeId();
+            }}
             className="icon-btn"
-            title={theme === "light" ? "Dark mode" : "Light mode"}
+            title={
+              themeId === "slate"
+                ? (dark ? "Dark mode" : "Light mode")
+                : themeId === "xp"
+                  ? "Switch to Slate"
+                  : "Switch to Windows XP"
+            }
           >
-            {theme === "light" ? (
-              <Moon className="h-4 w-4" />
-            ) : (
+            {themeId === "xp" ? (
+              <Monitor className="h-4 w-4" />
+            ) : dark ? (
               <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
             )}
           </button>
         </div>

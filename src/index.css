@@ -568,19 +568,342 @@
     }
   }
 
-  /* Touch devices need larger tap targets than the dense desktop rows */
-  @media (pointer: coarse) {
-    .icon-btn-sm {
-      width: 36px;
-      height: 36px;
-    }
+    /* Touch devices need larger tap targets than the dense desktop rows */
+    @media (pointer: coarse) {
+      .icon-btn-sm {
+        width: 36px;
+        height: 36px;
+      }
 
-    .checkbox {
-      width: 22px;
-      height: 22px;
+      .checkbox {
+        width: 22px;
+        height: 22px;
+      }
     }
   }
-}
+
+  /* ── Windows XP theme overrides ── */
+  .xp {
+    --bg: #008080;
+    --surface: #c0c0c0;
+    --surface-2: #dfdfdf;
+    --surface-3: #ffffff;
+    --border: #c0c0c0;
+    --border-strong: #808080;
+    --text: #000000;
+    --text-muted: #333333;
+    --text-faint: #555555;
+    --accent: #0000c0;
+    --accent-hover: #003399;
+    --accent-fg: #ffffff;
+    --success: #008000;
+    --danger: #c00000;
+
+    background: #008080;
+    color: #000000;
+    font-family: Tahoma, Geneva, sans-serif;
+
+    * {
+      border-color: #c0c0c0 !important;
+    }
+
+    html,
+    body {
+      background: #008080 !important;
+      color: #000000 !important;
+    }
+
+    /* ── Base components ── */
+    .card {
+      background: #c0c0c0;
+      border: 2px solid #c0c0c0;
+      box-shadow: 2px 2px 0 #ffffff, -2px -2px 0 #000000, 2px 2px 0 #000000 inset, -2px -2px 0 #ffffff inset;
+    }
+
+    .btn {
+      background: linear-gradient(180deg, #ffffff 0%, #c0c0c0 100%);
+      border: 2px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      color: #000000;
+      font-family: Tahoma, Geneva, sans-serif;
+      font-weight: bold;
+      box-shadow: none;
+      text-shadow: none;
+    }
+
+    .btn:disabled {
+      background: #c0c0c0;
+      border-color: #c0c0c0 #808080 #808080 #c0c0c0;
+      color: #808080;
+      box-shadow: none;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      background: linear-gradient(180deg, #ffffff 0%, #c0c0c0 100%);
+      color: #000000;
+    }
+
+    .btn-secondary {
+      border-color: #ffffff #808080 #808080 #ffffff;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 2px solid transparent;
+      color: #000000;
+    }
+
+    .btn-ghost:hover {
+      background: #c0c0c0;
+      border-color: #c0c0c0;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: none;
+      background: #c0c0c0;
+      border-color: #808080 #ffffff #ffffff #808080;
+      box-shadow: 2px 2px 0 #000000 inset, -2px -2px 0 #ffffff inset;
+    }
+
+    .input {
+      background: #ffffff;
+      border: 2px solid;
+      border-color: #c0c0c0 #ffffff #ffffff #c0c0c0;
+      color: #000000;
+      font-family: Tahoma, Geneva, sans-serif;
+      font-weight: bold;
+      box-shadow: 2px 2px 0 #808080 inset;
+    }
+
+    .input:focus {
+      border-color: #0000c0 #ffffff #ffffff #0000c0;
+      box-shadow: 2px 2px 0 #808080 inset;
+    }
+
+    .input-plain {
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .label {
+      color: #000000;
+      font-weight: bold;
+      font-family: Tahoma, Geneva, sans-serif;
+    }
+
+    /* ── Icon buttons ── */
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(180deg, #ffffff 0%, #c0c0c0 100%);
+      border: 2px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      color: #000000;
+      box-shadow: none;
+    }
+
+    .icon-btn:hover {
+      background: #c0c0c0;
+      color: #0000c0;
+    }
+
+    .icon-btn:active {
+      background: #c0c0c0;
+      border-color: #808080 #ffffff #ffffff #808080;
+      box-shadow: 2px 2px 0 #000000 inset, -2px -2px 0 #ffffff inset;
+    }
+
+    .icon-btn-sm {
+      width: 28px;
+      height: 28px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      background: #c0c0c0;
+      border: 1px solid #808080;
+      color: #000000;
+      font-weight: bold;
+    }
+
+    .badge-success {
+      background: #008000;
+      border-color: #008000;
+      color: #ffffff;
+    }
+
+    .badge-danger {
+      background: #c00000;
+      border-color: #c00000;
+      color: #ffffff;
+    }
+
+    .badge-accent {
+      background: #c0c0c0;
+      border-color: #808080;
+      color: #0000c0;
+      font-weight: bold;
+    }
+
+    /* ── Chips ── */
+    .chip {
+      background: linear-gradient(180deg, #ffffff 0%, #c0c0c0 100%);
+      border: 2px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      color: #000000;
+      font-weight: bold;
+    }
+
+    .chip:hover {
+      background: #c0c0c0;
+      border-color: #c0c0c0;
+      color: #0000c0;
+    }
+
+    /* ── Option rows ── */
+    .opt {
+      background: #c0c0c0;
+      border: 2px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      color: #000000;
+    }
+
+    .opt:hover {
+      border-color: #c0c0c0;
+    }
+
+    .opt[data-selected="true"] {
+      border-color: #0000c0;
+      background: #0000c0;
+      color: #ffffff;
+    }
+
+    .opt-letter {
+      background: #c0c0c0;
+      border: 1px solid #808080;
+      color: #000000;
+      font-weight: bold;
+    }
+
+    /* ── Setting rows ── */
+    .setting-row {
+      background: #c0c0c0;
+      border: 2px solid;
+      border-color: #ffffff #808080 #808080 #ffffff;
+      color: #000000;
+    }
+
+    .setting-row:hover {
+      border-color: #c0c0c0;
+    }
+
+    .setting-row[data-checked="true"] {
+      border-color: #0000c0;
+      background: #0000c0;
+    }
+
+    .setting-row span {
+      color: #000000;
+    }
+
+    /* ── Checkboxes ── */
+    .checkbox {
+      background: #ffffff;
+      border: 2px solid;
+      border-color: #c0c0c0 #ffffff #ffffff #c0c0c0;
+      color: #000000;
+    }
+
+    .checkbox[data-checked="true"] {
+      background: #0000c0;
+      border-color: #0000c0;
+    }
+
+    /* ── Progress bars ── */
+    .progress-track {
+      background: #c0c0c0;
+      border: 1px solid #808080;
+    }
+
+    .progress-fill {
+      background: #0000c0;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(90deg, #0000c0 0%, #0080c0 50%, #0000c0 100%);
+      color: #ffffff;
+      border-color: #ffffff;
+      box-shadow: 2px 2px 0 #000000;
+    }
+
+    header * {
+      color: #ffffff !important;
+    }
+
+    header .icon-btn {
+      background: transparent;
+      border: none;
+      color: #ffffff;
+      box-shadow: none;
+      border-color: transparent !important;
+    }
+
+    header .icon-btn:hover {
+      background: #003399;
+      color: #ffffff;
+    }
+
+    /* ── Selection highlights ── */
+    ::selection {
+      background: #0000c0;
+      color: #ffffff;
+    }
+
+    /* ── Animations disabled for XP ── */
+    .animate-dialog-in {
+      animation: none;
+    }
+
+    .animate-fade-in {
+      animation: none;
+    }
+
+    /* ── Disable ambient animation ── */
+    .AmbientBackground,
+    .wave-bg {
+      display: none !important;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 16px;
+      height: 16px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #c0c0c0;
+      border: 2px solid #c0c0c0;
+      box-shadow: 1px 1px 0 #ffffff, -1px -1px 0 #000000;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #808080;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #c0c0c0;
+      border: 2px solid #c0c0c0;
+      box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #000000;
+    }
+
+    /* ── Link styling ── */
+    a {
+      color: #0000c0;
+      text-decoration: underline;
+    }
+  }
 
 /* ─────────────────────────────────────────────
    Motion — restrained, two entrances only

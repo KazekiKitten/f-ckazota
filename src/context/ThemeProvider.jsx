@@ -16,16 +16,24 @@ const prefersReducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
+  const [themeId, setThemeId] = useState(() => {
+    const saved = localStorage.getItem("azota-theme-id");
+    if (saved && ["slate", "xp"].includes(saved)) {
+      document.documentElement.classList.toggle("xp", saved === "xp");
+      return saved;
+    }
+    return "slate";
+  });
+
+  const [dark, setDark] = useState(() => {
     const saved = localStorage.getItem("azota-theme");
     if (saved && ["light", "dark"].includes(saved)) {
       document.documentElement.classList.toggle("dark", saved === "dark");
-      return saved;
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.classList.toggle("dark", prefersDark);
-      return prefersDark ? "dark" : "light";
+      return saved === "dark";
     }
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.classList.toggle("dark", prefersDark);
+    return prefersDark;
   });
 
   const [accent, setAccent] = useState(() => {
@@ -33,15 +41,19 @@ export const ThemeProvider = ({ children }) => {
     return saved && ACCENT_IDS.includes(saved) ? saved : "red";
   });
 
-  // Off by default when the OS asks for reduced motion
   const [ambientAnimation, setAmbientAnimation] = useState(() => {
     const saved = localStorage.getItem("azota-ambient");
     return saved !== null ? saved === "true" : !prefersReducedMotion();
   });
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
+  const toggleThemeId = () => {
+    const next = themeId === "slate" ? "xp" : "slate";
+    setThemeId(next);
+    markPrefsChanged();
+  };
+
+  const toggleDark = () => {
+    setDark(!dark);
     markPrefsChanged();
   };
 
@@ -51,19 +63,26 @@ export const ThemeProvider = ({ children }) => {
     markPrefsChanged();
   };
 
-  // Single source of truth: any theme/accent state change is applied to the
-  // document and persisted here, so every code path saves correctly.
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    applyAccent(accent, theme);
-    localStorage.setItem("azota-theme", theme);
+    document.documentElement.classList.toggle("xp", themeId === "xp");
+    if (themeId === "slate") {
+      document.documentElement.classList.toggle("dark", dark);
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    if (themeId === "slate") {
+      applyAccent(accent, dark ? "dark" : "light");
+    }
+    localStorage.setItem("azota-theme-id", themeId);
+    localStorage.setItem("azota-theme", dark ? "dark" : "light");
     localStorage.setItem("azota-accent", accent);
-  }, [theme, accent]);
+  }, [themeId, dark, accent]);
 
   const toggleAmbientAnimation = () => {
     setAmbientAnimation((prev) => {
       const next = !prev;
       localStorage.setItem("azota-ambient", String(next));
+      markPrefsChanged();
       return next;
     });
   };
@@ -71,8 +90,10 @@ export const ThemeProvider = ({ children }) => {
   return (
     <ThemeContext.Provider
       value={{
-        theme,
-        toggleTheme,
+        themeId,
+        dark,
+        toggleThemeId,
+        toggleDark,
         accent,
         changeAccent,
         ambientAnimation,

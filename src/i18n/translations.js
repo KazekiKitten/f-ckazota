@@ -100,6 +100,7 @@ export const translations = {
       "Đã phát hiện {count} câu hỏi! Vui lòng kiểm tra và thiết lập đáp án.",
     noQuestions: "Không tìm thấy câu hỏi. Vui lòng kiểm tra định dạng.",
     noQuestionsDetected: "Không tự động phát hiện được. Vui lòng cắt thủ công.",
+    failedPagesAlert: "Một số trang không trích xuất được: {pages}",
     saveSuccess: "Đã lưu bài kiểm tra!",
     testImported: 'Đã nhập bài "{name}" thành công!',
     testDeleted: "Bạn chắc chắn muốn xóa bài kiểm tra này?",
@@ -117,8 +118,18 @@ export const translations = {
     questions: "câu",
     preview: "Xem trước",
     pdfInfo: "File PDF: {count} trang",
+    imagePreview: "Xem trước hình ảnh",
+    imageUploaded: "Đã tải lên {count} hình ảnh",
+    dragToReorder: "Kéo để thay đổi thứ tự",
+    clickToEnlarge: "Bấm để xem to",
+    removeImage: "Xóa hình",
+    confirmImages: "Xác nhận & Tiếp tục",
+    cancelUpload: "Hủy tải lên",
+    enlargeTitle: "Xem to hình ảnh",
 
     // Theme
+    slateTheme: "Slate (default)",
+    xpTheme: "Retro / Windows XP",
     lightTheme: "Giao diện Sáng",
     darkTheme: "Giao diện Tối",
 
@@ -190,7 +201,31 @@ export const translations = {
     usageLeft: "Còn lại",
     usageRequests: "request",
     usageTokens: "token",
+    usageCalls: "gọi API",
+    usageUpdated: "Cập nhật",
+    usageReset: "Đặt lại",
     usageUnavailable: "Nhà cung cấp này không trả về thông tin hạn mức",
+
+    // Firestore rules
+    firestoreRulesMissing: "Firestore security rules chưa được publish",
+    firestoreRulesMissingDesc:
+      "Bạn đã đăng nhập nhưng Firestore chặn mọi thao tác. Mở Firebase Console → Firestore Database → Rules, dán đoạn dưới đây rồi bấm Publish.",
+    firestoreRulesSnippet: `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /sharedTests/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create, delete: if request.auth != null;
+    }
+    match /userPrefs/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /userSecrets/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}`,
     testEmptyResponse: "Model không phản hồi — thử model khác",
     apiKeyStoredLocally: "Key chỉ được lưu trong trình duyệt này.",
     providerKeysNote:
@@ -199,6 +234,7 @@ export const translations = {
     light: "Sáng",
     dark: "Tối",
     accentColor: "Màu chủ đạo",
+    accentLockedXp: "Màu chủ đạo bị khóa trong chế độ Windows XP",
     backgroundAnimation: "Hoạt ảnh nền",
     backgroundAnimationDesc:
       "Dải sóng chuyển động rất nhẹ phía sau giao diện.",
@@ -340,6 +376,7 @@ export const translations = {
     questionsDetected: "Auto-detected {count} questions! Please verify.",
     noQuestions: "No questions found. Check format.",
     noQuestionsDetected: "Auto-detect failed. Please use manual crop.",
+    failedPagesAlert: "Some pages failed to extract: {pages}",
     saveSuccess: "Test saved successfully!",
     testImported: '"{name}" imported successfully!',
     testDeleted: "Are you sure you want to delete this test?",
@@ -357,6 +394,16 @@ export const translations = {
     questions: "questions",
     preview: "Preview",
     pdfInfo: "PDF: {count} pages",
+    imagePreview: "Image Preview",
+    imageUploaded: "{count} images uploaded",
+    dragToReorder: "Drag to reorder",
+    clickToEnlarge: "Click to enlarge",
+    removeImage: "Remove image",
+    confirmImages: "Confirm & Continue",
+    cancelUpload: "Cancel Upload",
+    enlargeTitle: "Enlarge Image",
+    slateTheme: "Slate (default)",
+    xpTheme: "Retro / Windows XP",
     lightTheme: "Light Theme",
     darkTheme: "Dark Theme",
 
@@ -426,7 +473,31 @@ export const translations = {
     usageLeft: "Left",
     usageRequests: "requests",
     usageTokens: "tokens",
+    usageCalls: "API calls",
+    usageUpdated: "Updated",
+    usageReset: "Reset",
     usageUnavailable: "This provider doesn't report quota information",
+
+    // Firestore rules
+    firestoreRulesMissing: "Firestore security rules aren't published",
+    firestoreRulesMissingDesc:
+      "You're signed in, but Firestore is blocking every operation. Open Firebase Console → Firestore Database → Rules, paste the snippet below, then press Publish.",
+    firestoreRulesSnippet: `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /sharedTests/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create, delete: if request.auth != null;
+    }
+    match /userPrefs/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /userSecrets/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}`,
     testEmptyResponse: "The model returned no response — try another model",
     apiKeyStoredLocally: "Keys are stored locally in this browser only.",
     providerKeysNote:
@@ -435,6 +506,7 @@ export const translations = {
     light: "Light",
     dark: "Dark",
     accentColor: "Accent color",
+    accentLockedXp: "Accent color locked in Windows XP mode",
     backgroundAnimation: "Background animation",
     backgroundAnimationDesc:
       "The subtle drifting wave behind the interface.",

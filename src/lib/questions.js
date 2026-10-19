@@ -76,27 +76,38 @@ export const getIncorrectQuestions = (test, answers) =>
     (q) => q.type !== "none" && !isAnswerCorrect(q, answers[q.id]),
   );
 
+/**
+ * Renumbers questions to match their array position. Extraction paths must
+ * run this before storing questions: model-reported numbers reflect the
+ * source page, not the order questions were produced in, which would
+ * otherwise show e.g. "Question 33" at the top of the list.
+ */
+export const renumberQuestions = (questions) =>
+  questions.map((question, index) => ({ ...question, number: index + 1 }));
+
+const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+/**
+ * Shuffles option order (and re-letters A, B, C… by position) so memorising
+ * positions doesn't help. The correct answers are translated into the new
+ * letters, which is what keeps grading correct after a shuffle.
+ */
 export const applyScrambledOptions = (questions) =>
   questions.map((q) => {
     if (q.type === "multiple_choice" || q.type === "true_false") {
-      const shuffledOptions = [...q.options].sort(
+      const shuffled = [...(q.options || [])].sort(
         () => Math.random() - 0.5,
       );
-      const optionMapping = {};
-      shuffledOptions.forEach((opt, idx) => {
-        optionMapping[opt.letter] = q.options[idx].letter;
+      const letterByOriginal = {};
+      const shuffledOptions = shuffled.map((option, index) => {
+        const letter = OPTION_LETTERS[index] || option.letter;
+        letterByOriginal[option.letter] = letter;
+        return { ...option, letter };
       });
-      return {
-        ...q,
-        shuffledOptions,
-        optionMapping,
-        correctAnswer: q.correctAnswer.map((ans) => {
-          const originalIndex = q.options.findIndex(
-            (opt) => opt.letter === ans,
-          );
-          return shuffledOptions[originalIndex].letter;
-        }),
-      };
+      const correctAnswer = (q.correctAnswer || [])
+        .map((answer) => letterByOriginal[answer])
+        .filter(Boolean);
+      return { ...q, shuffledOptions, correctAnswer };
     }
     return q;
   });
@@ -111,7 +122,7 @@ export const parseQuestions = (text) => {
     if (!line) continue;
     const qMatch =
       line.match(/^(?:Câu|Question)\s+(\d+)\s*[:.]\s*(.+)/i) ||
-      line.match(/^(\d+)\.\s*(.+)/);
+      line.match(/^(\d{1,3})\.\s*(.+)/);
     if (qMatch) {
       if (currentQuestion) questions.push(currentQuestion);
       currentQuestion = {

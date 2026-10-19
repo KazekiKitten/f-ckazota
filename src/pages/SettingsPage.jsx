@@ -18,6 +18,8 @@ import {
   CloudOff,
   FlaskConical,
   Loader2,
+  Layout,
+  Monitor,
 } from "lucide-react";
 import PageWrapper from "../components/PageWrapper";
 import Card from "../components/ui/Card";
@@ -50,6 +52,7 @@ import {
   clearSyncSession,
 } from "../lib/secureSync";
 import { getPrefsTimestamp, markPrefsChanged } from "../lib/prefs";
+import { checkRulesAccess } from "../lib/secureSync";
 
 const FreeTag = () => <span className="badge badge-success">FREE</span>;
 
@@ -126,7 +129,7 @@ const collectSecrets = (settings) => ({
 
 const AccountTab = ({ aiSettings, onAISettingsChange }) => {
   const { t, language, changeLanguage } = useLanguage();
-  const { theme, toggleTheme, accent, changeAccent } = useTheme();
+  const { themeId, dark, toggleThemeId, toggleDark, accent, changeAccent } = useTheme();
   const { user, authLoading, authError, signIn, signOut, configured } =
     useAuth();
 
@@ -134,6 +137,7 @@ const AccountTab = ({ aiSettings, onAISettingsChange }) => {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(null);
   const [lastSync, setLastSync] = useState(null);
+  const [rulesStatus, setRulesStatus] = useState(null);
 
   const syncErrorText = (error) => {
     const code = error?.code || error?.message || "";
@@ -191,14 +195,31 @@ const AccountTab = ({ aiSettings, onAISettingsChange }) => {
   useEffect(() => {
     if (!user) return;
     const id = setTimeout(() => {
-      uploadPrefs(user.uid, { theme, accent, language }).catch(() => {});
+      uploadPrefs(user.uid, { themeId, dark, accent, language }).catch(() => {});
     }, 700);
     return () => clearTimeout(id);
-  }, [user, theme, accent, language]);
+  }, [user, themeId, dark, accent, language]);
 
   // Pull preferences from the cloud once on sign-in. Last write wins: the
   // cloud copy is only applied when it is newer than the local one, so a
   // stale copy can never revert a choice the user just made.
+  // Detect unpublished Firestore rules so sharing/sync failures are explained
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    setRulesStatus("checking");
+    checkRulesAccess(user.uid)
+      .then((status) => {
+        if (active) setRulesStatus(status);
+      })
+      .catch(() => {
+        if (active) setRulesStatus("unknown");
+      });
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -209,13 +230,15 @@ const AccountTab = ({ aiSettings, onAISettingsChange }) => {
           (result.updatedAt || 0) > getPrefsTimestamp() + 1000;
         if (!cloudIsNewer) {
           // Local state is newer (or equal): push it up instead
-          uploadPrefs(user.uid, { theme, accent, language }).catch(() => {});
+          uploadPrefs(user.uid, { themeId, dark, accent, language }).catch(() => {});
           return;
         }
         if (result.prefs.accent) changeAccent(result.prefs.accent);
         if (result.prefs.language) changeLanguage(result.prefs.language);
-        if (result.prefs.theme && result.prefs.theme !== theme)
-          toggleTheme();
+        if (result.prefs.themeId && result.prefs.themeId !== themeId)
+          toggleThemeId();
+        if (result.prefs.dark !== undefined && result.prefs.dark !== dark)
+          toggleDark();
         // Local state now matches the cloud copy
         markPrefsChanged();
       })
@@ -315,6 +338,38 @@ const AccountTab = ({ aiSettings, onAISettingsChange }) => {
 
   return (
     <div className="max-w-xl space-y-4">
+      {rulesStatus === "denied" && (
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              className="mt-0.5 h-4 w-4 flex-shrink-0"
+              style={{ color: "var(--danger)" }}
+            />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold">
+                {t("firestoreRulesMissing")}
+              </h2>
+              <p
+                className="mt-1 text-xs"
+                style={{ color: "var(--text-muted)" }}
+              >
+                {t("firestoreRulesMissingDesc")}
+              </p>
+              <pre
+                className="mt-3 overflow-x-auto border p-3 text-[11px] leading-relaxed"
+                style={{
+                  borderColor: "var(--border)",
+                  background: "var(--surface-2)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                {t("firestoreRulesSnippet")}
+              </pre>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Profile */}
       <Card className="p-5">
         <div className="flex items-center gap-3">
@@ -441,11 +496,13 @@ const AccountTab = ({ aiSettings, onAISettingsChange }) => {
 
 // ── Settings page ───────────────────────────────────────────────────────────
 
-const SettingsPage = ({ initialTab = "ai", onTabChange, aiUsage = null, onUsage }) => {
+const SettingsPage = ({ initialTab = "ai", onTabChange, aiUsage = null, onUsage, onResetUsage }) => {
   const { t, language } = useLanguage();
   const {
-    theme,
-    toggleTheme,
+    themeId,
+    dark,
+    toggleThemeId,
+    toggleDark,
     accent,
     changeAccent,
     ambientAnimation,
@@ -603,27 +660,47 @@ const SettingsPage = ({ initialTab = "ai", onTabChange, aiUsage = null, onUsage 
                 </span>
               </div>
             </div>
-            {aiUsage && (
-              <p
+            {aiUsage || onResetUsage ? (
+              <div
                 className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-xs"
                 style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
               >
                 <span className="font-semibold">{t("usageLeft")}:</span>
-                {aiUsage.requests !== null && (
+                {aiUsage?.requests !== null && (
                   <span>
                     {aiUsage.requests} {t("usageRequests")}
                   </span>
                 )}
-                {aiUsage.tokens !== null && (
+                {aiUsage?.tokens !== null && (
                   <span>
                     {aiUsage.tokens} {t("usageTokens")}
                   </span>
                 )}
-                {aiUsage.requests === null && aiUsage.tokens === null && (
+                {aiUsage?.calls !== null && aiUsage.calls > 0 && (
+                  <span>
+                    {aiUsage.calls} {t("usageCalls")}
+                  </span>
+                )}
+                {(!aiUsage || (aiUsage.requests === null && aiUsage.tokens === null)) && (
                   <span>{t("usageUnavailable")}</span>
                 )}
-              </p>
-            )}
+                {aiUsage?.updatedAt && (
+                  <span>
+                    {t("usageUpdated")}:{" "}
+                    {new Date(aiUsage.updatedAt).toLocaleString()}
+                  </span>
+                )}
+                {onResetUsage && aiUsage?.calls > 0 && (
+                  <button
+                    onClick={onResetUsage}
+                    className="btn btn-ghost btn-xs text-xs"
+                    title={t("usageReset")}
+                  >
+                    {t("usageReset")}
+                  </button>
+                )}
+              </div>
+            ) : null}
           </Card>
 
           {/* Advanced options */}
@@ -809,29 +886,51 @@ const SettingsPage = ({ initialTab = "ai", onTabChange, aiUsage = null, onUsage 
                 }}
               >
                 <button
-                  onClick={() => theme !== "light" && toggleTheme()}
-                  className={`btn btn-sm ${theme === "light" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => toggleThemeId()}
+                  className={`btn btn-sm ${themeId === "slate" ? "btn-primary" : "btn-ghost"}`}
                 >
-                  <Sun className="h-3.5 w-3.5" />
-                  {t("light")}
+                  <Monitor className="h-3.5 w-3.5" />
+                  {t("slateTheme")}
                 </button>
                 <button
-                  onClick={() => theme !== "dark" && toggleTheme()}
-                  className={`btn btn-sm ${theme === "dark" ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => toggleThemeId()}
+                  className={`btn btn-sm ${themeId === "xp" ? "btn-primary" : "btn-ghost"}`}
                 >
-                  <Moon className="h-3.5 w-3.5" />
-                  {t("dark")}
+                  <Layout className="h-3.5 w-3.5" />
+                  {t("xpTheme")}
                 </button>
               </div>
+              {themeId === "slate" && (
+                <div className="mt-3 inline-flex border p-0.5"
+                  style={{
+                    borderColor: "var(--border)",
+                    background: "var(--surface-2)",
+                  }}
+                >
+                  <button
+                    onClick={() => toggleDark()}
+                    className={`btn btn-sm ${dark ? "btn-primary" : "btn-ghost"}`}
+                  >
+                    <Moon className="h-3.5 w-3.5" />
+                    {t("darkTheme")}
+                  </button>
+                  <button
+                    onClick={() => toggleDark()}
+                    className={`btn btn-sm ${!dark ? "btn-primary" : "btn-ghost"}`}
+                  >
+                    <Sun className="h-3.5 w-3.5" />
+                    {t("lightTheme")}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
               <label className="label">{t("accentColor")}</label>
               <div className="flex flex-wrap gap-2">
-                {ACCENTS.map((option) => {
+                {themeId === "slate" && ACCENTS.map((option) => {
                   const selected = accent === option.id;
-                  const swatch =
-                    theme === "dark" ? option.dark[0] : option.light[0];
+                  const swatch = dark ? option.dark[0] : option.light[0];
                   return (
                     <button
                       key={option.id}
@@ -851,6 +950,11 @@ const SettingsPage = ({ initialTab = "ai", onTabChange, aiUsage = null, onUsage 
                     </button>
                   );
                 })}
+                {themeId === "xp" && (
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {t("accentLockedXp")}
+                  </p>
+                )}
               </div>
             </div>
 

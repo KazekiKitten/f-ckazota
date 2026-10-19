@@ -86,7 +86,7 @@ const QuestionEditor = ({ question, onUpdate, onDelete }) => {
                 updates.options = [];
                 updates.correctAnswer = [];
               }
-              onUpdate(updates);
+              onUpdate(question.id, updates);
             }}
             className="input"
           >
